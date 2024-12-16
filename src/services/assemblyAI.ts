@@ -1,8 +1,10 @@
 import { AssemblyAI } from 'assemblyai';
 import toast from 'react-hot-toast';
+import { uploadAudioFile } from '../utils/audioHelpers';
+import { apiFetch } from '../utils/api';
 
 const client = new AssemblyAI({
-  apiKey: import.meta.env.VITE_ASSEMBLYAI_API_KEY
+  apiKey: import.meta.env.VITE_ASSEMBLYAI_API_KEY,
 });
 
 export async function startStreamingTranscription(audioBlob: Blob, onTranscriptUpdate: (text: string) => void) {
@@ -48,63 +50,80 @@ export async function startStreamingTranscription(audioBlob: Blob, onTranscriptU
   }
 }
 
-export async function transcribeAudio(audioBlob: Blob): Promise<{ text: string; utterances?: any[] }> {
-  try {
-    const uploadResponse = await fetch('https://api.assemblyai.com/v2/upload', {
-      method: 'POST',
-      headers: {
-        'Authorization': import.meta.env.VITE_ASSEMBLYAI_API_KEY
-      },
-      body: audioBlob
-    });
+// export async function transcribeAudio(audioBlob: Blob): Promise<{ text: string; utterances?: any[] }> {
+//   try {
+//     const uploadResponse = await fetch('https://api.assemblyai.com/v2/upload', {
+//       method: 'POST',
+//       headers: {
+//         'Authorization': import.meta.env.VITE_ASSEMBLYAI_API_KEY
+//       },
+//       body: audioBlob
+//     });
 
-    if (!uploadResponse.ok) {
-      throw new Error('Failed to upload audio');
-    }
+//     if (!uploadResponse.ok) {      
+//       throw new Error('Failed to upload audio');
+//     }
 
-    const { upload_url } = await uploadResponse.json();
+//     const { upload_url } = await uploadResponse.json();
 
-    const transcriptResponse = await fetch('https://api.assemblyai.com/v2/transcript', {
-      method: 'POST',
-      headers: {
-        'Authorization': import.meta.env.VITE_ASSEMBLYAI_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        audio_url: upload_url,
-        speaker_labels: true
-      })
-    });
+//     const transcriptResponse = await fetch('https://api.assemblyai.com/v2/transcript', {
+//       method: 'POST',
+//       headers: {
+//         'Authorization': import.meta.env.VITE_ASSEMBLYAI_API_KEY,
+//         'Content-Type': 'application/json'
+//       },
+//       body: JSON.stringify({
+//         audio_url: upload_url,
+//         speaker_labels: true
+//       })
+//     });
 
-    if (!transcriptResponse.ok) {
-      throw new Error('Failed to start transcription');
-    }
+//     if (!transcriptResponse.ok) {
+//       throw new Error('Failed to start transcription');
+//     }
 
-    const { id } = await transcriptResponse.json();
+//     const { id } = await transcriptResponse.json();
     
-    // Poll for completion
-    while (true) {
-      const pollingResponse = await fetch(`https://api.assemblyai.com/v2/transcript/${id}`, {
-        headers: {
-          'Authorization': import.meta.env.VITE_ASSEMBLYAI_API_KEY
-        }
-      });
+//     // Poll for completion
+//     while (true) {
+//       const pollingResponse = await fetch(`https://api.assemblyai.com/v2/transcript/${id}`, {
+//         headers: {
+//           'Authorization': import.meta.env.VITE_ASSEMBLYAI_API_KEY
+//         }
+//       });
 
-      const transcriptionResult = await pollingResponse.json();
+//       const transcriptionResult = await pollingResponse.json();
 
-      if (transcriptionResult.status === 'completed') {
-        return {
-          text: transcriptionResult.text,
-          utterances: transcriptionResult.utterances
-        };
-      } else if (transcriptionResult.status === 'error') {
-        throw new Error('Transcription failed');
-      }
+//       if (transcriptionResult.status === 'completed') {
+//         return {
+//           text: transcriptionResult.text,
+//           utterances: transcriptionResult.utterances
+//         };
+//       } else if (transcriptionResult.status === 'error') {
+//         throw new Error('Transcription failed');
+//       }
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-  } catch (error) {
-    console.error('Transcription error:', error);
-    throw error;
-  }
+//       await new Promise(resolve => setTimeout(resolve, 1000));
+//     }
+//   } catch (error) {
+//     console.error('Transcription error:', error);
+//     throw error;
+//   }
+// }
+
+export async function transcribeAudio(audioBlob: Blob, meetingId: string): Promise<{ text: string; utterances?: any[] }> {
+  const audioUrl = await uploadAudioFile(meetingId, audioBlob);
+  console.log(audioUrl,'audioUrl');
+  
+  const result = await apiFetch('/transcribeAudio', {
+    method: 'POST',
+    body: JSON.stringify({
+      audioUrl,
+      meetingId
+    })
+  });
+
+  console.log(result,'result');
+
+  return result;
 }

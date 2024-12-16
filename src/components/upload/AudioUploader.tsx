@@ -22,7 +22,7 @@ interface AudioUploaderProps {
   initialMeetingType?: MeetingType;
 }
 
-const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB limit
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB limit
 
 export default function AudioUploader({
   meetingId,
@@ -56,7 +56,7 @@ export default function AudioUploader({
     }
 
     if (audioFile.size > MAX_FILE_SIZE) {
-      toast.error('File size exceeds 25MB limit');
+      toast.error('File size exceeds 50MB limit');
       return;
     }
 
@@ -70,7 +70,7 @@ export default function AudioUploader({
       await onAudioUrlUpdate(tempUrl);
       
       setProcessingStatus('Transcribing audio...');
-      const result = await transcribeAudio(audioFile);
+      const result = await transcribeAudio(audioFile, meetingId);
       setTranscript(result.text);
       onTranscriptChange(result.text);
       

@@ -2,7 +2,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../lib/firebase';
 import toast from 'react-hot-toast';
 
-const MAX_CHUNK_SIZE = 24 * 1024 * 1024; // 24MB to stay safely under limit
+const MAX_CHUNK_SIZE = 50 * 1024 * 1024; // 50MB to stay safely under limit
 
 export function createAudioContext(): AudioContext {
   return new (window.AudioContext || window.webkitAudioContext)();

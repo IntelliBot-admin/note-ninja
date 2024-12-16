@@ -22,6 +22,7 @@ export async function apiFetch(
       }
       
       headers.set('Authorization', `Bearer ${idToken}`);
+      headers.set('Content-Type', 'application/json');
     }
 
     const response = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, {
