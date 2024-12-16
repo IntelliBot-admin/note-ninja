@@ -113,20 +113,19 @@ export default function AudioRecorder({
   });
 
   const handleRecordClick = () => {
-    if (showInstructions && !isRecording) {
-      setShowingInstructions(true);
+    if (isRecording) {
+      stopRecording();
     } else {
-      if (isRecording) {
-        stopRecording();
-      } else {
-        startRecordingFn();
-      }
+      startRecordingFn();
+      // Show instructions after Chrome dialog appears with shorter delay
+      showInstructions && setTimeout(() => setShowingInstructions(true), 400);
     }
   };
 
   const handleDontShowAgain = (value: boolean) => {
     localStorage.setItem(SHOW_INSTRUCTIONS_KEY, (!value).toString());
     setShowInstructions(!value);
+    setShowingInstructions(false);
   };
 
   const { showWarning, countdown, keepRecording } = useRecordingDuration(
@@ -413,8 +412,8 @@ export default function AudioRecorder({
         isOpen={showingInstructions}
         onClose={() => setShowingInstructions(false)}
         onStart={() => {
-          setShowingInstructions(false);
           startRecordingFn();
+          setShowingInstructions(false);
         }}
         onDontShowAgain={handleDontShowAgain}
       />

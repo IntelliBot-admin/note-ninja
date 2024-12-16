@@ -153,24 +153,41 @@ export function useAudioRecorder({
       } else {
         // Desktop: Combine mic and system audio
         const micStream = await getAudioStream();
-        const systemStream = await getSystemAudioStream();
-        
-        // Store both stream references
-        micStreamRef.current = micStream;
-        systemStreamRef.current = systemStream;
-        
-        const audioContext = new AudioContext({ sampleRate: 16000 });
-        const micSource = audioContext.createMediaStreamSource(micStream);
-        const systemSource = audioContext.createMediaStreamSource(systemStream);
+        try {
+          const systemStream = await getSystemAudioStream();
+          systemStreamRef.current = systemStream;
+          
+          // Create merged stream
+          const audioContext = new AudioContext({ sampleRate: 16000 });
+          const micSource = audioContext.createMediaStreamSource(micStream);
+          const systemSource = audioContext.createMediaStreamSource(systemStream);
 
-        const merger = audioContext.createChannelMerger(2);
-        micSource.connect(merger, 0, 0);
-        systemSource.connect(merger, 0, 1);
+          const merger = audioContext.createChannelMerger(2);
+          micSource.connect(merger, 0, 0);
+          systemSource.connect(merger, 0, 1);
 
-        const destination = audioContext.createMediaStreamDestination();
-        merger.connect(destination);
-        
-        streamForRecording = destination.stream;
+          const destination = audioContext.createMediaStreamDestination();
+          merger.connect(destination);
+          
+          streamForRecording = destination.stream;
+        } catch (error: any) {
+          // Handle specific error cases
+          if (error.message === 'CANCELLED') {
+            // User cancelled - clean up and exit quietly
+            micStream.getTracks().forEach(track => track.stop());
+            setIsTranscriberLoading(false);
+            return;
+          } else if (error.message === 'NO_AUDIO') {
+            toast.error('Please enable system audio sharing in the dialog');
+            micStream.getTracks().forEach(track => track.stop());
+            setIsTranscriberLoading(false);
+            return;
+          } else {
+            // For other errors, fall back to microphone only
+            console.warn('System audio unavailable, using microphone only:', error);
+            streamForRecording = micStream;
+          }
+        }
       }
       
       console.log('Got audio stream:', streamForRecording);

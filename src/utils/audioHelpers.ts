@@ -171,17 +171,20 @@ export async function getAudioStream(): Promise<MediaStream> {
 export async function getSystemAudioStream(): Promise<MediaStream> {
   try {
     const stream = await navigator.mediaDevices.getDisplayMedia({
+      preferCurrentTab: false, // Force system audio selection
+      systemAudio: 'include',
       audio: {
         echoCancellation: false,
         noiseSuppression: false,
         autoGainControl: false,
         sampleRate: 44100,
-        channelCount: 1
+        channelCount: 2
       },
       video: {
-        width: 1,
-        height: 1,
-        frameRate: 1
+        displaySurface: 'monitor', // Default to entire screen
+        width: { max: 1 },
+        height: { max: 1 },
+        frameRate: { max: 1 }
       }
     });
 
@@ -192,30 +195,26 @@ export async function getSystemAudioStream(): Promise<MediaStream> {
     stream.getVideoTracks().forEach(track => track.stop());
 
     if (audioTracks.length === 0) {
-      throw new Error('No system audio available. Please make sure you enabled audio sharing.');
+      throw new Error('No system audio available. Please enable audio sharing in the dialog.');
     }
 
     // Create a new stream with only audio
     const audioStream = new MediaStream(audioTracks);
     return audioStream;
   } catch (error: any) {
-    console.error('Error accessing system audio:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
-    });
-
-    if (error.name === 'NotAllowedError') {
-      toast.error('System audio access denied. Please allow screen sharing with audio.');
-      throw new Error('System audio access denied');
+    // Handle user cancellation without showing error
+    if (error.name === 'NotAllowedError' || error.message === 'Permission denied') {
+      throw new Error('CANCELLED');
     }
-    if (error.message === 'No system audio available') {
-      toast.error('Please enable system audio sharing in the screen sharing dialog.');
-      throw new Error('System audio not enabled');
+    
+    // Handle no audio selected
+    if (error.message === 'NO_AUDIO') {
+      throw new Error('NO_AUDIO');
     }
 
-    toast.error('Failed to access system audio');
-    throw new Error(`Failed to access system audio: ${error.message}`);
+    // For other errors, show a generic message
+    console.error('System audio error:', error);
+    throw new Error('SYSTEM_ERROR');
   }
 }
 
