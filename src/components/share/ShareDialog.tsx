@@ -40,31 +40,23 @@ export default function ShareDialog({ isOpen, onClose, transcript, summary }: Sh
 
   const shareViaEmail = () => {
     try {
-      // Split content into chunks if too long
       const content = getShareContent();
-      const maxChunkSize = 1500; // Safe size for mailto
-      const chunks = [];
       
-      for (let i = 0; i < content.length; i += maxChunkSize) {
-        chunks.push(content.slice(i, i + maxChunkSize));
-      }
-
-      // Create email body with chunked content
-      const emailBody = chunks.length > 1 
-        ? `${chunks[0]}\n\n... Content truncated due to length. Please use 'Copy to Clipboard' for full content.`
-        : chunks[0];
-
-      // Create mailto link
-      const mailtoLink = `mailto:?subject=${encodeURIComponent('Meeting Notes')}&body=${encodeURIComponent(emailBody)}`;
+      // Convert line breaks to HTML breaks for better email compatibility
+      const formattedContent = content.replace(/\n/g, '%0D%0A');
       
-      // Create and click a temporary link
-      const link = document.createElement('a');
-      link.href = mailtoLink;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      if (chunks.length > 1) {
+      // Create mailto URL with reasonable length limit
+      const maxLength = 2000; // Conservative limit for most clients
+      const truncatedContent = formattedContent.length > maxLength 
+        ? formattedContent.slice(0, maxLength) + '%0D%0A%0D%0A... Content truncated due to length. Please use "Copy to Clipboard" for full content.'
+        : formattedContent;
+  
+      const mailtoUrl = `mailto:?subject=${encodeURIComponent('Meeting Notes')}&body=${truncatedContent}`;
+  
+      // Open URL directly
+      window.location.href = mailtoUrl;
+  
+      if (formattedContent.length > maxLength) {
         toast.info('Content was truncated. Use "Copy to Clipboard" for full content.');
       } else {
         toast.success('Opening email client...');

@@ -267,7 +267,7 @@ export default function AudioRecorder({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-gray-900">Transcription</h2>
-          <TranscriptDisplay transcript={transcript} />
+          <TranscriptDisplay  transcript={transcript} />
         </div>
 
         <div className="space-y-4">
