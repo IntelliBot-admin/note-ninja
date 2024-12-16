@@ -1,4 +1,5 @@
 import { Timestamp } from 'firebase/firestore';
+import { Speaker } from './transcription';
 
 export type MeetingType = 
   | 'general'
@@ -42,7 +43,7 @@ export interface Meeting {
   recordAudioUrl?: string;
   recordSummary?: string;
   recordMeetingType?: MeetingType;
-  
+  recordSpeakers?: Speaker[];
   // MP3 Upload content
   uploadTranscription?: string;
   uploadAudioUrl?: string;

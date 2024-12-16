@@ -111,9 +111,7 @@ export async function startStreamingTranscription(audioBlob: Blob, onTranscriptU
 //   }
 // }
 
-export async function transcribeAudio(audioBlob: Blob, meetingId: string): Promise<{ text: string; utterances?: any[] }> {
-  const audioUrl = await uploadAudioFile(meetingId, audioBlob);
-  console.log(audioUrl,'audioUrl');
+export async function transcribeAudio(audioUrl: string, meetingId: string): Promise<{ text: string; utterances?: any[] }> {
   
   const result = await apiFetch('/transcribeAudio', {
     method: 'POST',

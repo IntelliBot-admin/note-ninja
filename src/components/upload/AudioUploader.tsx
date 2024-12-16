@@ -10,16 +10,20 @@ import MindMap from '../mindmap/MindMap';
 import ShareDialog from '../share/ShareDialog';
 import { Share2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { uploadAudioFile } from '../../utils/audioHelpers';
+import { Speaker } from '../../types/transcription';
 
 interface AudioUploaderProps {
   meetingId: string;
   onTranscriptChange: (transcript: string) => void;
   onAudioUrlUpdate: (url: string) => Promise<void>;
   onSummaryChange: (summary: string, type: MeetingType) => void;
+  onSpeakersChange: (speakers: Speaker[]) => void;
   initialTranscript?: string;
   initialAudioUrl?: string;
   initialSummary?: string;
   initialMeetingType?: MeetingType;
+  initialSpeakers?: Speaker[];
 }
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB limit
@@ -29,10 +33,12 @@ export default function AudioUploader({
   onTranscriptChange,
   onAudioUrlUpdate,
   onSummaryChange,
+  onSpeakersChange,
   initialTranscript = '',
   initialAudioUrl = '',
   initialSummary = '',
-  initialMeetingType = 'general'
+  initialMeetingType = 'general',
+  initialSpeakers = []
 }: AudioUploaderProps) {
   const [file, setFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string>(initialAudioUrl);
@@ -45,6 +51,7 @@ export default function AudioUploader({
   const [showEmojis, setShowEmojis] = useState(true);
   const [showMindMap, setShowMindMap] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [speakers, setSpeakers] = useState<Speaker[]>(initialSpeakers);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const audioFile = acceptedFiles[0];
@@ -67,13 +74,19 @@ export default function AudioUploader({
     try {
       setIsProcessing(true);
       setProcessingStatus('Uploading audio file...');
-      await onAudioUrlUpdate(tempUrl);
+
+      const audioUrl = await uploadAudioFile(meetingId, audioFile);
+      await onAudioUrlUpdate(audioUrl);
       
       setProcessingStatus('Transcribing audio...');
-      const result = await transcribeAudio(audioFile, meetingId);
+      const result = await transcribeAudio(audioUrl, meetingId);
       setTranscript(result.text);
       onTranscriptChange(result.text);
-      
+      if (result.utterances) {
+        setSpeakers(result.utterances);
+      }
+      await onSpeakersChange(speakers);
+
       setProcessingStatus('');
       toast.success('Audio transcribed successfully');
     } catch (error) {
@@ -167,7 +180,7 @@ export default function AudioUploader({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-gray-900">Transcription</h2>
-          <TranscriptDisplay transcript={transcript} />
+          <TranscriptDisplay transcript={transcript} speakers={speakers} />
         </div>
 
         <div className="space-y-4">

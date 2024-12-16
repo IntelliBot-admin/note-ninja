@@ -92,6 +92,18 @@ export const useMeetingStore = create<MeetingStore>((set) => ({
         }
       }
 
+      //handle speakers
+      let speakersUpdates = {};
+      if (updates.speakers !== undefined) {
+        if (source === 'record') {
+          console.log('recordSpeakers', updates.speakers);
+          speakersUpdates = { recordSpeakers: updates.speakers };
+        } else if (source === 'upload') {
+          console.log('uploadSpeakers', updates.speakers);
+          speakersUpdates = { uploadSpeakers: updates.speakers };
+        }
+      }
+
       // Handle summary updates based on source
       let summaryUpdates = {};
       if (updates.summary !== undefined) {
@@ -114,6 +126,7 @@ export const useMeetingStore = create<MeetingStore>((set) => ({
         ...transcriptionUpdates,
         ...audioUrlUpdates,
         ...summaryUpdates,
+        ...speakersUpdates,
         source,
         updatedAt: Timestamp.now()
       }).reduce((acc, [key, value]) => {

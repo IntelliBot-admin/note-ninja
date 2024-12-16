@@ -13,6 +13,7 @@ import ActionItemList from '../components/actionItems/ActionItemList';
 import { Meeting, MeetingType } from '../types/meeting';
 import toast from 'react-hot-toast';
 import { useRecordingStore } from '../store/recordingStore';
+import { Speaker } from '../types/transcription';
 
 const meetingTools = [
   { icon: Mic, label: 'Record', shortLabel: 'Record', action: 'record' },
@@ -41,6 +42,7 @@ export default function MeetingDetail() {
   const [recordAudioUrl, setRecordAudioUrl] = useState('');
   const [recordSummary, setRecordSummary] = useState('');
   const [recordMeetingType, setRecordMeetingType] = useState<MeetingType>('general');
+  const [recordSpeakers, setRecordSpeakers] = useState<Speaker[]>([]);
   const [personalNotes, setPersonalNotes] = useState('');
 
   // MP3 Upload state
@@ -48,7 +50,7 @@ export default function MeetingDetail() {
   const [uploadAudioUrl, setUploadAudioUrl] = useState('');
   const [uploadSummary, setUploadSummary] = useState('');
   const [uploadMeetingType, setUploadMeetingType] = useState<MeetingType>('general');
-
+  const [uploadSpeakers, setUploadSpeakers] = useState<Speaker[]>([]);
   useEffect(() => {
     if (!id || !user) return;
 
@@ -67,12 +69,13 @@ export default function MeetingDetail() {
           setRecordAudioUrl(meetingData.recordAudioUrl || '');
           setRecordSummary(meetingData.recordSummary || '');
           setRecordMeetingType(meetingData.recordMeetingType || 'general');
-
+          setRecordSpeakers(meetingData.recordSpeakers || []);
           // Set MP3 Upload content
           setUploadTranscript(meetingData.uploadTranscription || '');
           setUploadAudioUrl(meetingData.uploadAudioUrl || '');
           setUploadSummary(meetingData.uploadSummary || '');
           setUploadMeetingType(meetingData.uploadMeetingType || 'general');
+          setUploadSpeakers(meetingData.uploadSpeakers || []);
         } else {
           navigate('/');
         }
@@ -154,12 +157,15 @@ export default function MeetingDetail() {
               updateMeeting(id!, { audioUrl: url, source: 'record' })}
             onSummaryChange={(summary, type) => 
               updateMeeting(id!, { summary, meetingType: type, source: 'record' })}
+            onSpeakersChange={(speakers) => 
+              updateMeeting(id!, { speakers, source: 'record' })}
             onRecordingStateChange={setIsRecording}
             onNotesChange={handleNotesChange}
             initialTranscript={recordTranscript}
             initialAudioUrl={recordAudioUrl}
             initialSummary={recordSummary}
             initialMeetingType={recordMeetingType}
+            initialSpeakers={recordSpeakers}
             initialNotes={personalNotes}
           />
         );
@@ -173,10 +179,13 @@ export default function MeetingDetail() {
               updateMeeting(id!, { audioUrl: url, source: 'upload' })}
             onSummaryChange={(summary, type) => 
               updateMeeting(id!, { summary, meetingType: type, source: 'upload' })}
+            onSpeakersChange={(speakers) => 
+              updateMeeting(id!, { speakers, source: 'upload' })}
             initialTranscript={uploadTranscript}
             initialAudioUrl={uploadAudioUrl}
             initialSummary={uploadSummary}
             initialMeetingType={uploadMeetingType}
+            initialSpeakers={uploadSpeakers}
           />
         );
       case 'files':

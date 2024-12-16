@@ -9,7 +9,7 @@ import { apiFetch } from '../utils/api';
 interface UseAudioRecorderProps {
   meetingId: string;
   onAudioUrlUpdate: (url: string) => Promise<void>;
-  onTranscriptUpdate: (transcript: string, speakers?: Speaker[], translatedTexts?: Record<string, string>) => void;
+  onTranscriptUpdate: (transcript: string, translatedTexts?: Record<string, string>) => void;
 }
 
 interface TranscriptWord {

@@ -17,6 +17,7 @@ import { useMeetingStore } from '../../store/meetingStore';
 import { translateText, SUPPORTED_LANGUAGES } from '../../utils/translate';
 import toast from 'react-hot-toast';
 import { isMobile } from 'react-device-detect';
+import { Speaker } from '../../types/transcription';
 
 
 const SHOW_INSTRUCTIONS_KEY = 'showRecordingInstructions';
@@ -27,11 +28,13 @@ interface AudioRecorderProps {
   onSummaryChange: (summary: string, type: MeetingType) => void;
   onRecordingStateChange: (isRecording: boolean) => void;
   onNotesChange?: (notes: string) => void;
+  onSpeakersChange?: (speakers: Speaker[]) => void;
   initialTranscript?: string;
   initialAudioUrl?: string;
   initialSummary?: string;
   initialMeetingType?: MeetingType;
   initialNotes?: string;
+  initialSpeakers?: Speaker[];
   meetingId: string;
 }
 
@@ -40,16 +43,19 @@ export default function AudioRecorder({
   onAudioUrlUpdate,
   onSummaryChange,
   onRecordingStateChange,
+  onSpeakersChange,
   onNotesChange,
   initialTranscript = '',
   initialAudioUrl = '',
   initialSummary = '',
   initialMeetingType = 'general',
   initialNotes = '',
+  initialSpeakers = [],
   meetingId
 }: AudioRecorderProps) {
   const [transcript, setTranscript] = useState(initialTranscript);
   const [summary, setSummary] = useState(initialSummary);
+  const [speakers, setSpeakers] = useState<Speaker[]>(initialSpeakers);
   const [selectedMeetingType, setSelectedMeetingType] = useState<MeetingType>(initialMeetingType);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
@@ -267,7 +273,7 @@ export default function AudioRecorder({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-gray-900">Transcription</h2>
-          <TranscriptDisplay  transcript={transcript} />
+          <TranscriptDisplay  transcript={transcript} speakers={speakers} />
         </div>
 
         <div className="space-y-4">
