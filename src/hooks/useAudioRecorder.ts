@@ -54,6 +54,7 @@ export function useAudioRecorder({
   const [currentTranscript, setCurrentTranscript] = useState<string>('');
   // const [micStream, setMicStream] = useState<MediaStream | null>(null);
   const [isTranscriberLoading, setIsTranscriberLoading] = useState(false);
+  const [isMicMuted, setIsMicMuted] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -153,6 +154,7 @@ export function useAudioRecorder({
       } else {
         // Desktop: Combine mic and system audio
         const micStream = await getAudioStream();
+        micStreamRef.current = micStream;
         try {
           const systemStream = await getSystemAudioStream();
           systemStreamRef.current = systemStream;
@@ -384,6 +386,30 @@ export function useAudioRecorder({
     }
   }, [audioUrl]);
 
+  const muteMic = useCallback(() => {
+    if (micStreamRef.current) {
+      console.log('Muting microphone stream');
+      micStreamRef.current.getAudioTracks().forEach(track => {
+        track.enabled = false;
+      });
+      setIsMicMuted(true);
+    } else {
+      console.log('No microphone stream to mute');
+    }
+  }, []);
+  
+  const unmuteMic = useCallback(() => {
+    if (micStreamRef.current) {
+      console.log('Unmuting microphone stream');
+      micStreamRef.current.getAudioTracks().forEach(track => {
+        track.enabled = true;
+      });
+      setIsMicMuted(false);
+    } else {
+      console.log('No microphone stream to unmute');
+    }
+  }, []);
+
   useEffect(() => {
     return () => {
       clearTimer();
@@ -406,6 +432,9 @@ export function useAudioRecorder({
     notificationStatus,
     showNotification,
     notificationMessage,
-    isTranscriberLoading
+    isTranscriberLoading,
+    isMicMuted,
+    muteMic,
+    unmuteMic
   };
 }

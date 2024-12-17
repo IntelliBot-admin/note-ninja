@@ -12,7 +12,7 @@ import ShareDialog from '../share/ShareDialog';
 import DurationWarningModal from './DurationWarningModal';
 import NoteEditor from '../notes/NoteEditor';
 import RecordingInstructions from './RecordingInstructions';
-import { Share2, FileText, Globe } from 'lucide-react';
+import { Share2, FileText, Globe, Mic, MicOff, VolumeX, Volume2 } from 'lucide-react';
 import { useMeetingStore } from '../../store/meetingStore';
 import { translateText, SUPPORTED_LANGUAGES } from '../../utils/translate';
 import toast from 'react-hot-toast';
@@ -88,7 +88,10 @@ export default function AudioRecorder({
     showNotification,
     notificationMessage,
     isTranscriberLoading,
-    duration
+    duration,
+    isMicMuted,
+    muteMic,
+    unmuteMic
   } = useAudioRecorder({
     meetingId,
     onAudioUrlUpdate: async (url: string) => {
@@ -231,6 +234,16 @@ export default function AudioRecorder({
       }
     };
   }, []);
+  const handleMicToggle = () => {
+    console.log('Mic toggle clicked');
+    if (isMicMuted) {
+      console.log('Unmuting mic');
+      unmuteMic();
+    } else {
+      console.log('Muting mic');
+      muteMic();
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -242,6 +255,25 @@ export default function AudioRecorder({
               onClick={handleRecordClick}
               isLoading={isTranscriberLoading}
             />
+            {isRecording && (
+              <button
+                onClick={handleMicToggle}
+                className={`
+                  w-12 h-12 rounded-full flex items-center justify-center transition-all
+                  ${isMicMuted 
+                    ? 'bg-purple-500 hover:bg-purple-600' 
+                    : 'bg-blue-500 hover:bg-blue-600'
+                  }
+                `}
+                title={isMicMuted ? 'Unmute Mic' : 'Mute Mic'}
+              >
+                {isMicMuted ? (
+                  <Volume2 className="w-5 h-5 text-white" />
+                ) : (
+                  <VolumeX className="w-5 h-5 text-white" />
+                )}
+              </button>
+            )}
           </div>
 
           {(audioUrl || initialAudioUrl) && (
@@ -251,7 +283,7 @@ export default function AudioRecorder({
               </div>
               <button
                 onClick={downloadRecording}
-                className="flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+                className="flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 Download Recording
               </button>
