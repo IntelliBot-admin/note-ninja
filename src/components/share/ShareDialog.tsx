@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Copy, Mail, Link2 } from 'lucide-react';
+import { useState } from 'react';
+import { X, Copy, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface ShareDialogProps {
@@ -46,7 +46,7 @@ export default function ShareDialog({ isOpen, onClose, transcript, summary }: Sh
       const formattedContent = content.replace(/\n/g, '%0D%0A');
       
       // Create mailto URL with reasonable length limit
-      const maxLength = 2000; // Conservative limit for most clients
+      const maxLength = 1000; // Conservative limit for most clients
       const truncatedContent = formattedContent.length > maxLength 
         ? formattedContent.slice(0, maxLength) + '%0D%0A%0D%0A... Content truncated due to length. Please use "Copy to Clipboard" for full content.'
         : formattedContent;
@@ -56,8 +56,9 @@ export default function ShareDialog({ isOpen, onClose, transcript, summary }: Sh
       // Open URL directly
       window.location.href = mailtoUrl;
   
+      // Notify user about truncation
       if (formattedContent.length > maxLength) {
-        toast.info('Content was truncated. Use "Copy to Clipboard" for full content.');
+        toast.error('Content was truncated. Use "Copy to Clipboard" for full content.');
       } else {
         toast.success('Opening email client...');
       }
