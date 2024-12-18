@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { FileAudio, Loader2 } from 'lucide-react';
 import { transcribeAudio } from '../../services/assemblyAI';
@@ -10,7 +10,7 @@ import MindMap from '../mindmap/MindMap';
 import ShareDialog from '../share/ShareDialog';
 import { Share2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { extractAudioFromYoutube, transcribeAudioFromYoutube, uploadAudioFile } from '../../utils/audioHelpers';
+import { transcribeAudioFromYoutube, uploadAudioFile } from '../../utils/audioHelpers';
 import { Speaker } from '../../types/transcription';
 
 interface AudioUploaderProps {
