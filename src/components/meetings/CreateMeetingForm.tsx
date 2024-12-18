@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 import { Timestamp } from 'firebase/firestore';
 
 export default function CreateMeetingForm() {
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState('Placeholder Title');
   const [categoryId, setCategoryId] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
