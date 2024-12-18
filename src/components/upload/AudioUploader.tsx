@@ -71,14 +71,14 @@ export default function AudioUploader({
     setFile(audioFile);
     const tempUrl = URL.createObjectURL(audioFile);
     setAudioUrl(tempUrl);
-    
+
     try {
       setIsProcessing(true);
       setProcessingStatus('Uploading audio file...');
 
       const audioUrl = await uploadAudioFile(meetingId, audioFile);
       await onAudioUrlUpdate(audioUrl);
-      
+
       setProcessingStatus('Transcribing audio...');
       const result = await transcribeAudio(audioUrl, meetingId);
       setTranscript(result.text);
@@ -168,8 +168,8 @@ export default function AudioUploader({
   return (
     <div className="space-y-8">
       <div className="space-y-4">
-        <div 
-          {...getRootProps()} 
+        <div
+          {...getRootProps()}
           className={`
             border-2 border-dashed rounded-lg p-6 text-center cursor-pointer
             transition-colors duration-200 max-w-2xl mx-auto relative
@@ -178,7 +178,7 @@ export default function AudioUploader({
           `}
         >
           <input {...getInputProps()} disabled={isProcessing} />
-          
+
           {isProcessing ? (
             <div className="space-y-3">
               <Loader2 className="w-10 h-10 mx-auto text-indigo-500 animate-spin" />
@@ -248,8 +248,23 @@ export default function AudioUploader({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-gray-900">Transcription</h2>
-          <TranscriptDisplay transcript={transcript} speakers={speakers} />
-        </div>
+          <TranscriptDisplay
+            transcript={transcript}
+            speakers={speakers}
+            onUpdateSpeaker={(oldName, newName) => {
+              // Update local state first
+              const updatedSpeakers = speakers.map(speaker => ({
+                ...speaker,
+                speaker: speaker.speaker === oldName ? newName : speaker.speaker
+              }));
+              
+              // Update local state
+              setSpeakers(updatedSpeakers);
+              
+              // Notify parent component
+              onSpeakersChange(updatedSpeakers);
+            }}
+          />        </div>
 
         <div className="space-y-4">
           <div className="flex justify-between items-center">

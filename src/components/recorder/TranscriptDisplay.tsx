@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Copy, Globe } from 'lucide-react';
+import { Copy, Globe, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { translateText, SUPPORTED_LANGUAGES } from '../../utils/translate';
 
@@ -13,13 +13,16 @@ interface Speaker {
 interface TranscriptDisplayProps {
   transcript: string;
   speakers?: Speaker[];
+  onUpdateSpeaker?: (oldName: string, newName: string) => void;
 }
 
-export function TranscriptDisplay({ transcript, speakers }: TranscriptDisplayProps) {
+export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: TranscriptDisplayProps) {
   const [selectedLanguage, setSelectedLanguage] = useState<string>('');
   const [translatedText, setTranslatedText] = useState<string>('');
   const [isTranslating, setIsTranslating] = useState(false);
   const transcriptRef = useRef<HTMLDivElement>(null);
+  const [editingSpeaker, setEditingSpeaker] = useState<string | null>(null);
+  const [newSpeakerName, setNewSpeakerName] = useState('');
 
   useEffect(() => {
     if (transcriptRef.current) {
@@ -61,6 +64,18 @@ export function TranscriptDisplay({ transcript, speakers }: TranscriptDisplayPro
     }
   };
 
+  const handleSpeakerEdit = (speaker: string) => {
+    setEditingSpeaker(speaker);
+    setNewSpeakerName(speaker);
+  };
+
+  const handleSpeakerUpdate = (oldName: string) => {
+    if (newSpeakerName && onUpdateSpeaker) {
+      onUpdateSpeaker(oldName, newSpeakerName);
+    }
+    setEditingSpeaker(null);
+  };
+
   if (!transcript) {
     return (
       <div className="bg-white rounded-lg shadow-sm border p-4 h-[400px] relative">
@@ -100,9 +115,42 @@ export function TranscriptDisplay({ transcript, speakers }: TranscriptDisplayPro
             {speakers.map((utterance, index) => (
               <div key={index} className="flex space-x-3">
                 <div className="flex-shrink-0">
-                  <span className="inline-block px-2 py-1 bg-indigo-100 text-indigo-800 rounded text-sm font-medium">
-                    Speaker {utterance.speaker}
-                  </span>
+                  {editingSpeaker === utterance.speaker ? (
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="text"
+                        value={newSpeakerName}
+                        onChange={(e) => setNewSpeakerName(e.target.value)}
+                        className="px-2 py-1 text-sm border rounded"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleSpeakerUpdate(utterance.speaker);
+                          }
+                        }}
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => handleSpeakerUpdate(utterance.speaker)}
+                        className="text-indigo-600 hover:text-indigo-800"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center space-x-1">
+                      <span className="inline-block px-2 py-1 bg-indigo-100 text-indigo-800 rounded text-sm font-medium">
+                        {utterance.speaker.length === 1 ? `Speaker ${utterance.speaker}` : utterance.speaker}
+                      </span>
+                      {onUpdateSpeaker && (
+                        <button
+                          onClick={() => handleSpeakerEdit(utterance.speaker)}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                      )}
+                    </span>
+                  )}
                 </div>
                 <p className="flex-1">{utterance.text}</p>
               </div>
