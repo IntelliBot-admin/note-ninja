@@ -1,6 +1,7 @@
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../lib/firebase';
 import toast from 'react-hot-toast';
+import { apiPost } from './api';
 
 const MAX_CHUNK_SIZE = 50 * 1024 * 1024; // 50MB to stay safely under limit
 
@@ -10,6 +11,16 @@ export function createAudioContext(): AudioContext {
 
 export function createMediaStreamDestination(audioContext: AudioContext): MediaStreamAudioDestinationNode {
   return audioContext.createMediaStreamDestination();
+}
+
+export async function transcribeAudioFromYoutube(url: string) {
+  try {
+    const result = await apiPost('/extractAudioFromYoutube', { url });
+    return result;
+  } catch (error) {
+    console.error('Error extracting audio from YouTube:', error);
+    throw new Error('Failed to extract audio from YouTube');
+  }
 }
 
 export async function validateAudioBlob(blob: Blob): Promise<void> {

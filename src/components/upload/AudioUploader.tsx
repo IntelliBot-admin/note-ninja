@@ -10,7 +10,7 @@ import MindMap from '../mindmap/MindMap';
 import ShareDialog from '../share/ShareDialog';
 import { Share2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { uploadAudioFile } from '../../utils/audioHelpers';
+import { extractAudioFromYoutube, transcribeAudioFromYoutube, uploadAudioFile } from '../../utils/audioHelpers';
 import { Speaker } from '../../types/transcription';
 
 interface AudioUploaderProps {
@@ -52,6 +52,7 @@ export default function AudioUploader({
   const [showMindMap, setShowMindMap] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [speakers, setSpeakers] = useState<Speaker[]>(initialSpeakers);
+  const [youtubeLink, setYoutubeLink] = useState<string>('');
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const audioFile = acceptedFiles[0];
@@ -134,6 +135,36 @@ export default function AudioUploader({
     disabled: isProcessing
   });
 
+  const handleYoutubeLinkSubmit = async () => {
+    if (!youtubeLink) {
+      toast.error('Please enter a valid YouTube link');
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      setProcessingStatus('Processing YouTube link...');
+
+      const result = await transcribeAudioFromYoutube(youtubeLink);
+
+      setTranscript(result.text);
+      onTranscriptChange(result.text);
+      if (result.utterances) {
+        setSpeakers(result.utterances);
+      }
+      await onSpeakersChange(speakers);
+
+      setProcessingStatus('');
+      toast.success('Audio transcribed successfully');
+    } catch (error) {
+      console.error('Error processing YouTube link:', error);
+      toast.error('Failed to process YouTube link');
+      setProcessingStatus('Processing failed');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="space-y-4">
@@ -167,6 +198,43 @@ export default function AudioUploader({
               )}
             </>
           )}
+        </div>
+
+        <div className="max-w-2xl mx-auto flex items-center gap-4">
+          <div className="flex-1 h-px bg-gray-200"></div>
+          <span className="text-sm font-medium text-gray-500">or</span>
+          <div className="flex-1 h-px bg-gray-200"></div>
+        </div>
+
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-lg shadow-sm border p-4 space-y-3">
+            <label className="block text-sm font-medium text-gray-700">
+              YouTube Video URL
+            </label>
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={youtubeLink}
+                onChange={(e) => setYoutubeLink(e.target.value)}
+                placeholder="Paste YouTube link here"
+                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              />
+              <button
+                onClick={handleYoutubeLinkSubmit}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  'Submit YouTube Link'
+                )}
+              </button>
+            </div>
+          </div>
         </div>
 
         {audioUrl && (
