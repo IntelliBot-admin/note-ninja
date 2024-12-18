@@ -85,8 +85,8 @@ export default function AudioUploader({
       onTranscriptChange(result.text);
       if (result.utterances) {
         setSpeakers(result.utterances);
+        await onSpeakersChange(result.utterances);
       }
-      await onSpeakersChange(speakers);
 
       setProcessingStatus('');
       toast.success('Audio transcribed successfully');
@@ -135,7 +135,7 @@ export default function AudioUploader({
     disabled: isProcessing
   });
 
-  const handleYoutubeLinkSubmit = async () => {
+  const handleYoutubeLinkSubmit = useCallback(async () => {
     if (!youtubeLink) {
       toast.error('Please enter a valid YouTube link');
       return;
@@ -151,8 +151,8 @@ export default function AudioUploader({
       onTranscriptChange(result.text);
       if (result.utterances) {
         setSpeakers(result.utterances);
+        await onSpeakersChange(result.utterances);
       }
-      await onSpeakersChange(speakers);
 
       setProcessingStatus('');
       toast.success('Audio transcribed successfully');
@@ -163,7 +163,7 @@ export default function AudioUploader({
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [youtubeLink, onTranscriptChange, onSpeakersChange, speakers]);
 
   return (
     <div className="space-y-8">
