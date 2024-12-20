@@ -14,7 +14,6 @@ import {
   serverTimestamp,
   getDoc
 } from 'firebase/firestore';
-
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -57,4 +56,4 @@ export const getMeetingsQuery = (userId: string): Query<DocumentData> => {
   );
 };
 
-export { auth, db, storage };
+export { auth, db, storage, app };

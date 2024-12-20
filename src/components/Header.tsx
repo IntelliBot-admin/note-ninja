@@ -1,7 +1,6 @@
-import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { LogOut, User, Home, Calendar } from 'lucide-react';
+import { LogOut, User, Home, Calendar, Settings } from 'lucide-react';
 import { useRecordingStore } from '../store/recordingStore';
 import toast from 'react-hot-toast';
 
@@ -29,6 +28,7 @@ export default function Header() {
 
   const isHome = location.pathname === '/';
   const isCalendar = location.pathname === '/calendar';
+  const isSettings = location.pathname === '/settings';
 
   console.log('isRecording', user);
 
@@ -86,6 +86,20 @@ export default function Header() {
               title={isRecording ? 'Stop recording to navigate' : 'View Calendar'}
             >
               <Calendar className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => handleNavigation('/settings')}
+              disabled={isRecording}
+              className={`p-2 rounded-full transition-colors ${
+                isRecording 
+                  ? 'opacity-50 cursor-not-allowed text-gray-300'
+                  : isSettings
+                    ? 'text-indigo-600 bg-indigo-50' 
+                    : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-100'
+              }`}
+              title={isRecording ? 'Stop recording to navigate' : 'Account Settings'}
+            >
+              <Settings className="w-5 h-5" />
             </button>
             <div className="hidden sm:flex items-center text-sm text-gray-700">
               <User className="w-4 h-4 mr-1" />

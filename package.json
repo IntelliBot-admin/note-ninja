@@ -13,8 +13,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@deepgram/sdk": "^3.9.0",
     "@fluentui/react": "^8.121.13",
     "@headlessui/react": "^1.7.18",
+    "@invertase/firestore-stripe-payments": "^0.0.7",
     "@tiptap/extension-code-block": "^2.2.4",
     "@tiptap/extension-image": "^2.2.4",
     "@tiptap/extension-link": "^2.2.4",

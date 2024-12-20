@@ -10,6 +10,7 @@ import ChatInterface from './components/chat/ChatInterface';
 import NavigationGuard from './components/NavigationGuard';
 import HeaderSlideLayout from './components/layout/HeaderSlideLayout';
 import { useAuthStore } from './store/authStore';
+import Settings from './pages/Settings';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthStore();
@@ -70,6 +71,14 @@ export default function App() {
               </PrivateRoute>
             }
           />
+          <Route
+            path="/settings"
+            element={
+              <PrivateRoute>
+                <Settings />
+              </PrivateRoute>
+            }
+          />  
           <Route
             path="/meeting/:id"
             element={

@@ -5,7 +5,10 @@ import {
   signOut as firebaseSignOut,
   sendPasswordResetEmail,
   onAuthStateChanged,
-  User
+  User,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword
 } from 'firebase/auth';
 import { doc, setDoc, collection, getDocs, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
@@ -19,6 +22,7 @@ interface AuthState {
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 async function initializeUserCategories(userId: string) {
@@ -86,6 +90,22 @@ export const useAuthStore = create<AuthState>((set) => ({
       await sendPasswordResetEmail(auth, email);
     } catch (error: any) {
       throw new Error(getAuthErrorMessage(error.code));
+    }
+  },
+
+  updatePassword: async (currentPassword: string, newPassword: string) => {
+    try {
+      const user = auth.currentUser;
+      if (!user || !user.email) throw new Error('No user logged in');
+      
+      // Reauthenticate user before changing password
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+      
+      // Update password
+      await updatePassword(user, newPassword);
+    } catch (error: any) {
+      throw new Error(error.message);
     }
   },
 }));
