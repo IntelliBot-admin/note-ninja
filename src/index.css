@@ -1,5 +1,7 @@
+/* Import fonts first */
 @import url('https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&display=swap');
 
+/* Tailwind directives must be on their own lines with no extra spaces */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

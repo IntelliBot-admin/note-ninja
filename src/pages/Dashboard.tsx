@@ -3,8 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { onSnapshot, Timestamp } from 'firebase/firestore';
 import { useAuthStore } from '../store/authStore';
 import { useMeetingStore } from '../store/meetingStore';
+import { useUIStore } from '../store/uiStore';
 import { useCategories } from '../hooks/useCategories';
-import { PlusCircle, Calendar, Users, FileText, Trash2, Grid, List, Search, SortAsc, SortDesc, Filter, Tag } from 'lucide-react';
+import { PlusCircle, Grid, List, Search, SortAsc, SortDesc, Filter, Tag, Calendar, Users, FileText, Trash2 } from 'lucide-react';
+import NoteSizeToggle from '../components/common/NoteSizeToggle';
+import ViewPreferenceModal from '../components/common/ViewPreferenceModal';
+import CalendarView from '../components/calendar/CalendarView';
 import CategoryManager from '../components/categories/CategoryManager';
 import toast from 'react-hot-toast';
 import { Meeting } from '../types/meeting';
@@ -18,7 +22,7 @@ const postItColors = [
   'bg-orange-100'
 ];
 
-type ViewMode = 'grid' | 'list';
+type ViewMode = 'grid' | 'list' | 'calendar';
 type SortDirection = 'asc' | 'desc';
 
 interface SortConfig {
@@ -34,7 +38,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingMeeting, setDeletingMeeting] = useState<Meeting | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const { noteSize, defaultView, setDefaultView } = useUIStore();
+  const [viewMode, setViewMode] = useState<ViewMode>(defaultView);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [sortConfig, setSortConfig] = useState<SortConfig>({ field: 'createDate', direction: 'desc' });
@@ -42,6 +47,8 @@ export default function Dashboard() {
   const [showFilters, setShowFilters] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showViewPreferenceModal, setShowViewPreferenceModal] = useState(false);
+  const [pendingViewMode, setPendingViewMode] = useState<ViewMode>('grid');
 
   useEffect(() => {
     if (!user) return;
@@ -231,10 +238,10 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:justify-between sm:items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">My Meetings</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">My Meetings</h1>
           <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
             <div className="flex space-x-4">
               <div className="relative">
@@ -243,7 +250,7 @@ export default function Dashboard() {
                   placeholder="Search meetings..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:text-white"
                 />
                 <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
               </div>
@@ -251,8 +258,8 @@ export default function Dashboard() {
                 onClick={() => setShowFilters(!showFilters)}
                 className={`px-3 py-2 border rounded-md flex items-center space-x-2 ${
                   showFilters || selectedCategory
-                    ? 'border-indigo-500 text-indigo-700 bg-indigo-50'
-                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                    ? 'border-indigo-500 text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/50'
+                    : 'border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
                 }`}
               >
                 <Filter className="w-4 h-4" />
@@ -264,8 +271,8 @@ export default function Dashboard() {
                 onClick={() => toggleSort('createDate')}
                 className={`px-3 py-2 border rounded-md flex items-center space-x-2 ${
                   sortConfig.field === 'createDate'
-                    ? 'border-indigo-500 text-indigo-700 bg-indigo-50'
-                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                    ? 'border-indigo-500 text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/50'
+                    : 'border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
                 }`}
               >
                 <span>Date</span>
@@ -281,8 +288,8 @@ export default function Dashboard() {
                 onClick={() => toggleSort('title')}
                 className={`px-3 py-2 border rounded-md flex items-center space-x-2 ${
                   sortConfig.field === 'title'
-                    ? 'border-indigo-500 text-indigo-700 bg-indigo-50'
-                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                    ? 'border-indigo-500 text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/50'
+                    : 'border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
                 }`}
               >
                 <span>Title</span>
@@ -294,9 +301,29 @@ export default function Dashboard() {
                   )
                 )}
               </button>
-              <div className="border border-gray-200 rounded-lg p-1 flex items-center bg-white shadow-sm">
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-1 flex items-center bg-white dark:bg-gray-800 shadow-sm">
+                <NoteSizeToggle />
                 <button
-                  onClick={() => setViewMode('grid')}
+                  onClick={() => {
+                    setViewMode('calendar');
+                    setPendingViewMode('calendar');
+                    setShowViewPreferenceModal(true);
+                  }}
+                  className={`p-1.5 rounded transition-colors ${
+                    viewMode === 'calendar'
+                      ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                  }`}
+                  title="Calendar View"
+                >
+                  <Calendar className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => {
+                    setViewMode('grid');
+                    setPendingViewMode('grid');
+                    setShowViewPreferenceModal(true);
+                  }}
                   className={`p-1.5 rounded ${
                     viewMode === 'grid'
                       ? 'bg-indigo-100 text-indigo-600'
@@ -307,7 +334,11 @@ export default function Dashboard() {
                   <Grid className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => setViewMode('list')}
+                  onClick={() => {
+                    setViewMode('list');
+                    setPendingViewMode('list');
+                    setShowViewPreferenceModal(true);
+                  }}
                   className={`p-1.5 rounded ${
                     viewMode === 'list'
                       ? 'bg-indigo-100 text-indigo-600'
@@ -322,14 +353,14 @@ export default function Dashboard() {
             <div className="flex space-x-2">
               <button
                 onClick={() => setShowCategoryModal(true)}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 <Tag className="w-4 h-4 mr-2" />
                 Categories
               </button>
               <button
                 onClick={() => navigate('/meeting/new')}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 <PlusCircle className="w-4 h-4 mr-2" />
                 New Meeting
@@ -370,7 +401,7 @@ export default function Dashboard() {
         )}
 
         {filteredMeetings.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
             {searchQuery || selectedCategory ? (
               <>
                 <h3 className="text-lg font-medium text-gray-900">No matches found</h3>
@@ -383,6 +414,10 @@ export default function Dashboard() {
               </>
             )}
           </div>
+        ) : viewMode === 'calendar' ? (
+          <div className="transition-opacity duration-300 ease-in-out">
+            <CalendarView meetings={filteredMeetings} />
+          </div>
         ) : viewMode === 'grid' ? (
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredMeetings.map((meeting, index) => (
@@ -391,7 +426,7 @@ export default function Dashboard() {
                 className={`${postItColors[index % postItColors.length]} rounded-lg transform hover:-rotate-1 transition-all duration-200 relative`}
                 style={{
                   boxShadow: '2px 3px 7px rgba(0,0,0,0.1)',
-                  height: '250px',
+                  height: noteSize === 'normal' ? '220px' : '110px',
                   width: '100%'
                 }}
               >
@@ -400,7 +435,7 @@ export default function Dashboard() {
                   onClick={() => navigate(`/meeting/${meeting.id}`)}
                 >
                   <div className="flex justify-between items-start mb-3">
-                    <h3 className="text-lg font-medium text-gray-900 line-clamp-2 flex-1 pr-8">
+                    <h3 className={`${noteSize === 'normal' ? 'text-lg' : 'text-base'} font-medium text-gray-900 line-clamp-2 flex-1 pr-8`}>
                       {searchQuery ? (
                         <div dangerouslySetInnerHTML={{ 
                           __html: getHighlightedText(meeting.title, searchQuery)
@@ -422,7 +457,7 @@ export default function Dashboard() {
 
                   {meeting.categoryId && (
                     <div 
-                      className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mb-2"
+                      className={`inline-flex items-center px-2 ${noteSize === 'normal' ? 'py-1' : 'py-0.5'} rounded-full text-xs font-medium mb-2`}
                       style={{
                         backgroundColor: `${getCategoryColor(meeting.categoryId)}20`,
                         color: getCategoryColor(meeting.categoryId)
@@ -433,7 +468,7 @@ export default function Dashboard() {
                     </div>
                   )}
 
-                  <div className="space-y-3 text-sm text-gray-600 flex-1 overflow-hidden">
+                  <div className={`space-y-${noteSize === 'normal' ? '3' : '1'} ${noteSize === 'normal' ? 'text-sm' : 'text-xs'} text-gray-600 flex-1 overflow-hidden`}>
                     <div className="flex items-center">
                       <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
                       <span className="truncate">
@@ -525,6 +560,18 @@ export default function Dashboard() {
             ))}
           </div>
         )}
+
+        {/* View Preference Modal */}
+        <ViewPreferenceModal
+          isOpen={showViewPreferenceModal}
+          onClose={() => setShowViewPreferenceModal(false)}
+          onConfirm={() => {
+            setDefaultView(pendingViewMode);
+            setShowViewPreferenceModal(false);
+            toast.success(`${pendingViewMode.charAt(0).toUpperCase() + pendingViewMode.slice(1)} view set as default`);
+          }}
+          viewMode={pendingViewMode}
+        />
 
         {/* Delete Confirmation Modal */}
         {showDeleteModal && deletingMeeting && (

@@ -1,7 +1,8 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { LogOut, User, Home, Calendar, Settings } from 'lucide-react';
+import { LogOut, User, Home, Calendar, Moon, Sun,Settings } from 'lucide-react';
 import { useRecordingStore } from '../store/recordingStore';
+import DarkModeToggle from './common/DarkModeToggle';
 import toast from 'react-hot-toast';
 
 export default function Header() {
@@ -38,7 +39,7 @@ export default function Header() {
   if (!user) return null;
 
   return (
-    <header className={`bg-white shadow ${headerClass}`}>
+    <header className={`bg-white dark:bg-gray-800 shadow ${headerClass}`}>
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-2 sm:py-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2 sm:space-x-4 min-w-0">
@@ -58,7 +59,7 @@ export default function Header() {
             )}
             <div 
               onClick={() => !isRecording && handleNavigation('/')}
-              className={`flex items-center space-x-2 ${
+              className={`flex items-center space-x-2 text-gray-900 dark:text-white ${
                 isRecording ? 'text-gray-400 cursor-not-allowed' : 'text-gray-900 cursor-pointer'
               }`}
             >
@@ -67,7 +68,7 @@ export default function Header() {
                 alt="Ninja Notes Logo"
                 className="w-14 h-14 object-contain"
               />
-              <h1 className="text-xl sm:text-2xl font-bold">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                 Ninja Notes
               </h1>
             </div>
@@ -105,6 +106,7 @@ export default function Header() {
               <User className="w-4 h-4 mr-1" />
               {user.email}
             </div>
+            <DarkModeToggle />
             <button
               onClick={handleSignOut}
               disabled={isRecording}

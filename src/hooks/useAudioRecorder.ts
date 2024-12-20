@@ -1,11 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { uploadAudioFile, createAudioBlobFromChunks, getMediaRecorderOptions, getAudioStream, getSystemAudioStream, createAudioContext, createMediaStreamDestination } from '../utils/audioHelpers';
-// import { Speaker } from '../types/transcription';
+import { uploadAudioFile, createAudioBlobFromChunks, getMediaRecorderOptions, getAudioStream, getSystemAudioStream } from '../utils/audioHelpers';
 import toast from 'react-hot-toast';
 import { isMobile } from 'react-device-detect';
-// import { RealtimeTranscriber } from 'assemblyai';
+import { RealtimeTranscriber } from 'assemblyai';
 import { apiFetch } from '../utils/api';
-import { createClient, LiveTranscriptionEvents } from '@deepgram/sdk';
 
 interface UseAudioRecorderProps {
   meetingId: string;
@@ -208,44 +206,32 @@ export function useAudioRecorder({
       mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.start(1000); // Collect data every second
 
-      // Get Deepgram token and setup transcriber
-      const deepgramTokenResponse = await apiFetch('/getDeepgramToken');
-      const deepgramToken = deepgramTokenResponse.token;
+      
+      // Get AssemblyAI token and setup transcriber (unchanged)
+      const data = await apiFetch('/getAssemblyAIToken');
+      const token = data.token;
 
-      console.log('Deepgram token:', deepgramToken);
-      // Initialize Deepgram client
-      const deepgram = createClient(deepgramToken);
-
-      console.log('Deepgram client:', deepgram);
-
-      // Setup Deepgram live transcription
-      const dgConnection = deepgram.listen.live({
-        model: "nova",
-        punctuate: true,
-        interim_results: true,
-        smart_format: true,
-        diarize: true,
+      // Initialize realtime transcriber
+      const rt = new RealtimeTranscriber({
+        token,
+        sampleRate: 16000,
+        wordBoost: [],
       });
 
-      dgConnection.on(LiveTranscriptionEvents.Open, () => {
-        console.log('Deepgram connection opened');
+      // Setup event handlers (unchanged)
+      (rt as unknown as {
+        on<K extends keyof TranscriberEvents>(event: K, listener: TranscriberEvents[K]): void;
+      }).on("transcript", handleTranscriptUpdate);
+      
+      (rt as unknown as {
+        on<K extends keyof TranscriberEvents>(event: K, listener: TranscriberEvents[K]): void;
+      }).on("error", (error: any) => {
+        console.error("Realtime transcription error:", error);
+        toast.error("Transcription error occurred");
       });
 
-      dgConnection.on(LiveTranscriptionEvents.Transcript, (data) => {
-        console.log('Deepgram transcript received:', data);
-        handleTranscriptUpdate(data);
-      });
-
-      dgConnection.on(LiveTranscriptionEvents.Error, (error) => {
-        console.error('Deepgram error:', error);
-        toast.error('Transcription error occurred');
-      });
-
-      dgConnection.on(LiveTranscriptionEvents.Close, () => {
-        console.log('Deepgram connection closed');
-      });
-
-      realtimeTranscriberRef.current = dgConnection;
+      await rt.connect();
+      realtimeTranscriberRef.current = rt;
       setIsTranscriberLoading(false);
 
       // Audio processing setup
@@ -261,7 +247,7 @@ export function useAudioRecorder({
       audioSource.connect(scriptProcessor);
       scriptProcessor.connect(audioContextRef.current.destination);
 
-      // Process audio data for Deepgram
+      // Process audio data for AssemblyAI
       scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
         const inputBuffer = audioProcessingEvent.inputBuffer;
         const inputData = inputBuffer.getChannelData(0);
@@ -274,7 +260,7 @@ export function useAudioRecorder({
 
         if (realtimeTranscriberRef.current) {
           try {
-            realtimeTranscriberRef.current.send(int16Data);
+            realtimeTranscriberRef.current.sendAudio(int16Data);
           } catch (error) {
             console.error('Error sending audio:', error);
           }
@@ -359,10 +345,10 @@ export function useAudioRecorder({
           systemStreamRef.current = null;
         }
 
-        // Stop Deepgram transcription
+        // Stop realtime transcription
         if (realtimeTranscriberRef.current) {
-          console.log('Closing Deepgram transcriber...');
-          realtimeTranscriberRef.current.finish();
+          console.log('Closing realtime transcriber...');
+          realtimeTranscriberRef.current.close();
           realtimeTranscriberRef.current = null;
         }
 

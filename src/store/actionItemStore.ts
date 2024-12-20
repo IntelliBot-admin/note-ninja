@@ -12,7 +12,6 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { ActionItem } from '../types/actionItem';
-import toast from 'react-hot-toast';
 
 interface ActionItemStore {
   getActionItemsQuery: (meetingId: string, userId: string) => Query;
@@ -83,12 +82,14 @@ export const useActionItemStore = create<ActionItemStore>(() => ({
   toggleComplete: async (itemId, currentStatus) => {
     try {
       const docRef = doc(db, 'actionItems', itemId);
-      const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
+      const newStatus = currentStatus;
       
       await updateDoc(docRef, {
         status: newStatus,
         updatedAt: Timestamp.now()
       });
+      
+      return newStatus;
     } catch (error: any) {
       console.error('Error toggling action item status:', error);
       throw new Error('Failed to update action item status');

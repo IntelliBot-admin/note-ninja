@@ -5,15 +5,18 @@ import { useAuthStore } from '../store/authStore';
 import { ActionItem } from '../types/actionItem';
 import ActionItemCalendarView from '../components/actionItems/ActionItemCalendarView';
 import TimelineView from '../components/actionItems/TimelineView';
+import KanbanBoard from '../components/actionItems/KanbanBoard';
 import ViewToggle from '../components/common/ViewToggle';
 import { useActionItemStore } from '../store/actionItemStore';
 import { parse, isValid } from 'date-fns';
 import toast from 'react-hot-toast';
 
+type ViewMode = 'calendar' | 'timeline' | 'kanban';
+
 export default function CalendarView() {
   const [items, setItems] = useState<ActionItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'calendar' | 'timeline'>('calendar');
+  const [view, setView] = useState<ViewMode>('calendar');
   const { user } = useAuthStore();
   const { toggleComplete } = useActionItemStore();
 
@@ -144,20 +147,66 @@ export default function CalendarView() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Action Items</h1>
-        <ViewToggle view={view} onViewChange={setView} />
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setView('calendar')}
+            className={`px-3 py-1.5 rounded-md ${
+              view === 'calendar'
+                ? 'bg-indigo-100 text-indigo-600'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            Calendar
+          </button>
+          <button
+            onClick={() => setView('timeline')}
+            className={`px-3 py-1.5 rounded-md ${
+              view === 'timeline'
+                ? 'bg-indigo-100 text-indigo-600'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            Timeline
+          </button>
+          <button
+            onClick={() => setView('kanban')}
+            className={`px-3 py-1.5 rounded-md ${
+              view === 'kanban'
+                ? 'bg-indigo-100 text-indigo-600'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            Kanban
+          </button>
+        </div>
       </div>
 
       <div className="transition-opacity duration-300 ease-in-out">
-        {view === 'calendar' ? (
+        {view === 'calendar' && (
           <ActionItemCalendarView
             items={items}
             onToggleComplete={handleToggleComplete}
             onEdit={handleEdit}
           />
-        ) : (
+        )}
+        {view === 'timeline' && (
           <TimelineView
             items={items}
             onToggleComplete={handleToggleComplete}
+            onEdit={handleEdit}
+          />
+        )}
+        {view === 'kanban' && (
+          <KanbanBoard
+            items={items}
+            onStatusChange={async (itemId, newStatus) => {
+              try {
+                await toggleComplete(itemId, newStatus);
+              } catch (error) {
+                console.error('Error updating status:', error);
+                toast.error('Failed to update item status');
+              }
+            }}
             onEdit={handleEdit}
           />
         )}

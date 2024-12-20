@@ -223,7 +223,7 @@ export default function MeetingDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
         {/* Meeting Title and Category */}
         <div className="mb-6 space-y-4">
@@ -234,7 +234,7 @@ export default function MeetingDetail() {
                   type="text"
                   value={editedTitle}
                   onChange={(e) => setEditedTitle(e.target.value)}
-                  className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-xl font-bold"
+                  className="flex-1 rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-xl font-bold bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   placeholder="Enter meeting title"
                   autoFocus
                 />
@@ -364,7 +364,7 @@ export default function MeetingDetail() {
         </div>
 
         {/* Content Area */}
-        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6">
           {renderContent()}
         </div>
       </div>
