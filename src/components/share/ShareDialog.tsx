@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Copy, Mail } from 'lucide-react';
+import { X, Copy } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface ShareDialogProps {
@@ -35,36 +35,6 @@ export default function ShareDialog({ isOpen, onClose, transcript, summary }: Sh
       toast.success('Content copied to clipboard');
     } catch (error) {
       toast.error('Failed to copy content');
-    }
-  };
-
-  const shareViaEmail = () => {
-    try {
-      const content = getShareContent();
-      
-      // Convert line breaks to HTML breaks for better email compatibility
-      const formattedContent = content.replace(/\n/g, '%0D%0A');
-      
-      // Create mailto URL with reasonable length limit
-      const maxLength = 1000; // Conservative limit for most clients
-      const truncatedContent = formattedContent.length > maxLength 
-        ? formattedContent.slice(0, maxLength) + '%0D%0A%0D%0A... Content truncated due to length. Please use "Copy to Clipboard" for full content.'
-        : formattedContent;
-  
-      const mailtoUrl = `mailto:?subject=${encodeURIComponent('Meeting Notes')}&body=${truncatedContent}`;
-  
-      // Open URL directly
-      window.location.href = mailtoUrl;
-  
-      // Notify user about truncation
-      if (formattedContent.length > maxLength) {
-        toast.error('Content was truncated. Use "Copy to Clipboard" for full content.');
-      } else {
-        toast.success('Opening email client...');
-      }
-    } catch (error) {
-      console.error('Email share error:', error);
-      toast.error('Failed to open email client. Try using Copy to Clipboard instead.');
     }
   };
 
@@ -112,18 +82,10 @@ export default function ShareDialog({ isOpen, onClose, transcript, summary }: Sh
             <div className="mt-6 space-y-4">
               <button
                 onClick={copyToClipboard}
-                className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 <Copy className="w-4 h-4 mr-2" />
                 Copy to Clipboard
-              </button>
-
-              <button
-                onClick={shareViaEmail}
-                className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
-              >
-                <Mail className="w-4 h-4 mr-2" />
-                Share via Email
               </button>
             </div>
           </div>

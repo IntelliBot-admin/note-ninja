@@ -14,8 +14,85 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, write: if isAuthenticated() && isOwner(userId);
       
+      // Calendar Providers subcollection
+      match /calendarProviders/{providerId} {
+        // Only allow read/write if user owns the document and provider type is valid
+        allow read: if isAuthenticated() && isOwner(userId);
+        allow create: if isAuthenticated() && isOwner(userId) && 
+          isValidProvider() &&
+          hasRequiredCalendarFields();
+        allow update: if isAuthenticated() && isOwner(userId) && 
+          isValidProvider() &&
+          hasRequiredCalendarFields() &&
+          onlyAllowedFieldsChanged();
+        allow delete: if isAuthenticated() && isOwner(userId);
+      }
+      
+      
       match /categories/{categoryId} {
         allow read, write: if isAuthenticated() && isOwner(userId);
+      }
+    }
+    
+    // Helper functions for calendar provider validation
+    function isValidProvider() {
+      let validTypes = ['google', 'microsoft'];
+      return validTypes.hasAny([request.resource.data.type]);
+    }
+    
+    function hasRequiredCalendarFields() {
+      let requiredFields = [
+        'type',
+        'accessToken',
+        'refreshToken',
+        'expiresAt',
+        'email'
+      ];
+      
+      return request.resource.data.keys().hasAll(requiredFields) &&
+        request.resource.data.type is string &&
+        request.resource.data.accessToken is string &&
+        request.resource.data.refreshToken is string &&
+        request.resource.data.expiresAt is number &&
+        request.resource.data.email is string;
+    }
+    
+    function onlyAllowedFieldsChanged() {
+      let allowedFields = [
+        'accessToken',
+        'refreshToken',
+        'expiresAt',
+        'name'
+      ];
+      
+      let changedFields = request.resource.data.diff(resource.data).affectedKeys();
+      return changedFields.hasOnly(allowedFields);
+    }
+
+    // Stripe-related collections
+    match /customers/{uid} {
+      allow read: if isAuthenticated() && request.auth.uid == uid;
+
+      match /checkout_sessions/{id} {
+        allow read, write: if isAuthenticated() && request.auth.uid == uid;
+      }
+      match /subscriptions/{id} {
+        allow read: if isAuthenticated() && request.auth.uid == uid;
+      }
+      match /payments/{id} {
+        allow read: if isAuthenticated() && request.auth.uid == uid;
+      }
+    }
+
+    match /products/{id} {
+      allow read: if true;
+
+      match /prices/{id} {
+        allow read: if true;
+      }
+
+      match /tax_rates/{id} {
+        allow read: if true;
       }
     }
 

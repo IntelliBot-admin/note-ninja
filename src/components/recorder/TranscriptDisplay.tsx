@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Copy, Globe, Pencil } from 'lucide-react';
+import { Copy, Globe, Pencil, Lightbulb, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { translateText, SUPPORTED_LANGUAGES } from '../../utils/translate';
+import { serverPost } from '../../utils/api';
 
 interface Speaker {
   speaker: string;
@@ -16,6 +17,11 @@ interface TranscriptDisplayProps {
   onUpdateSpeaker?: (oldName: string, newName: string) => void;
 }
 
+interface Suggestion {
+  type: 'Question' | 'Suggestion';
+  text: string;
+}
+
 export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: TranscriptDisplayProps) {
   const [selectedLanguage, setSelectedLanguage] = useState<string>('');
   const [translatedText, setTranslatedText] = useState<string>('');
@@ -23,6 +29,8 @@ export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: Tra
   const transcriptRef = useRef<HTMLDivElement>(null);
   const [editingSpeaker, setEditingSpeaker] = useState<string | null>(null);
   const [newSpeakerName, setNewSpeakerName] = useState('');
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
 
   useEffect(() => {
     if (transcriptRef.current) {
@@ -64,6 +72,29 @@ export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: Tra
     }
   };
 
+  const handleGetSuggestions = async () => {
+    try {
+      setIsLoadingSuggestions(true);
+      console.log('Getting suggestions...');
+      const response = await serverPost('/get-suggestions', {
+        transcript: speakers
+      });
+      const parsedSuggestions = response.suggestions.map((item: string) => {
+        const [type, ...textParts] = item.split(': ');
+        return {
+          type: type as 'Question' | 'Suggestion',
+          text: textParts.join(': ')
+        };
+      });
+      setSuggestions(parsedSuggestions);
+    } catch (error) {
+      console.error('Error getting suggestions:', error);
+      toast.error('Failed to get suggestions');
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
   const handleSpeakerEdit = (speaker: string) => {
     setEditingSpeaker(speaker);
     setNewSpeakerName(speaker);
@@ -74,6 +105,45 @@ export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: Tra
       onUpdateSpeaker(oldName, newSpeakerName);
     }
     setEditingSpeaker(null);
+  };
+
+  const SuggestionsPanel = () => {
+    if (suggestions.length === 0 && !isLoadingSuggestions) return null;
+
+    return (
+      <div className="absolute bottom-16 right-4 w-96 bg-white rounded-lg shadow-lg border p-4 mb-2">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-sm font-semibold text-gray-900">AI Suggestions</h3>
+          <button 
+            onClick={() => setSuggestions([])} 
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        
+        {isLoadingSuggestions ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {suggestions.map((suggestion, index) => (
+              <div key={index} className="flex items-start space-x-2">
+                <div className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                  suggestion.type === 'Question' 
+                    ? 'bg-blue-100 text-blue-800'
+                    : 'bg-green-100 text-green-800'
+                }`}>
+                  {suggestion.type}
+                </div>
+                <p className="text-sm text-gray-600 flex-1">{suggestion.text}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (!transcript) {
@@ -160,7 +230,9 @@ export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: Tra
           <p className="whitespace-pre-wrap">{translatedText || transcript}</p>
         )}
       </div>
-      
+
+      <SuggestionsPanel />
+
       <div className="absolute bottom-4 right-4">
         <button
           onClick={copyToClipboard}
@@ -168,6 +240,13 @@ export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: Tra
         >
           <Copy className="w-4 h-4 mr-1" />
           Copy Text
+        </button>
+        <button
+          className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-yellow-500 hover:bg-yellow-600 ml-2"
+          onClick={handleGetSuggestions}
+        >
+          <Lightbulb className="w-4 h-4 mr-1" />
+          Get Suggestions
         </button>
       </div>
     </div>

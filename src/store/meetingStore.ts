@@ -72,6 +72,12 @@ export const useMeetingStore = create<MeetingStore>((set) => ({
       const currentData = currentDoc.data();
       const source = updates.source || currentData?.source;
 
+      // Handle duration updates
+      let durationUpdates = {};
+      if (updates.duration !== undefined) {
+        const currentDuration = currentData.duration || 0;
+        durationUpdates = { duration: currentDuration + updates.duration };
+      }
       // Handle transcription updates based on source
       let transcriptionUpdates = {};
       if (updates.transcription !== undefined) {
@@ -126,6 +132,7 @@ export const useMeetingStore = create<MeetingStore>((set) => ({
         ...transcriptionUpdates,
         ...audioUrlUpdates,
         ...summaryUpdates,
+        ...durationUpdates,
         ...speakersUpdates,
         source,
         updatedAt: Timestamp.now()

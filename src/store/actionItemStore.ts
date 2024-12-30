@@ -12,7 +12,6 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { ActionItem } from '../types/actionItem';
-import toast from 'react-hot-toast';
 
 interface ActionItemStore {
   getActionItemsQuery: (meetingId: string, userId: string) => Query;

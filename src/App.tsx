@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import SignupForm from './components/auth/SignupForm';
 import Dashboard from './pages/Dashboard';
 import MeetingDetail from './pages/MeetingDetail';
 import NewMeeting from './pages/NewMeeting';
@@ -10,6 +11,9 @@ import ChatInterface from './components/chat/ChatInterface';
 import NavigationGuard from './components/NavigationGuard';
 import HeaderSlideLayout from './components/layout/HeaderSlideLayout';
 import { useAuthStore } from './store/authStore';
+import Settings from './pages/Settings';
+import '@stripe/stripe-js';
+
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthStore();
@@ -47,6 +51,14 @@ export default function App() {
             }
           />
           <Route
+            path="/signup"
+            element={
+              <PublicRoute>
+                <SignupForm />
+              </PublicRoute>
+            }
+          />
+          <Route
             path="/"
             element={
               <PrivateRoute>
@@ -70,6 +82,14 @@ export default function App() {
               </PrivateRoute>
             }
           />
+          <Route
+            path="/settings"
+            element={
+              <PrivateRoute>
+                <Settings />
+              </PrivateRoute>
+            }
+          />  
           <Route
             path="/meeting/:id"
             element={

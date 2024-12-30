@@ -24,3 +24,11 @@ dist-ssr
 *.sw?
 
 firebase-functions
+.env
+.vercel
+
+# Environment variables
+.env
+env
+.env.local
+.env.*.local

@@ -12,7 +12,7 @@ import ShareDialog from '../share/ShareDialog';
 import DurationWarningModal from './DurationWarningModal';
 import NoteEditor from '../notes/NoteEditor';
 import RecordingInstructions from './RecordingInstructions';
-import { Share2, FileText, Globe, Mic, MicOff, VolumeX, Volume2 } from 'lucide-react';
+import { Share2, FileText, VolumeX, Volume2 } from 'lucide-react';
 import { useMeetingStore } from '../../store/meetingStore';
 import { translateText, SUPPORTED_LANGUAGES } from '../../utils/translate';
 import toast from 'react-hot-toast';
@@ -62,6 +62,7 @@ export default function AudioRecorder({
   const [showMindMap, setShowMindMap] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [activeTab, setActiveTab] = useState('transcription');
   const [notes, setNotes] = useState(initialNotes);
   const { updateMeeting } = useMeetingStore();
   const [selectedLanguage, setSelectedLanguage] = useState<string>('');
@@ -118,12 +119,19 @@ export default function AudioRecorder({
           toast.error('Failed to save transcript');
         }
       }, 1000);
+    },
+    onSpeakersUpdate: (newSpeakers: Speaker[]) => {
+      setSpeakers(newSpeakers);
+      console.log(newSpeakers);
     }
   });
 
   const handleRecordClick = () => {
     if (isRecording) {
       stopRecording();
+      if (onSpeakersChange) {
+        onSpeakersChange(speakers);
+      }
     } else {
       startRecordingFn();
       // Show instructions after Chrome dialog appears with shorter delay
@@ -153,12 +161,12 @@ export default function AudioRecorder({
       const generatedSummary = await generateSummary(transcript, selectedMeetingType, showEmojis);
       setSummary(generatedSummary);
       onSummaryChange(generatedSummary, selectedMeetingType);
-      
-      await updateMeeting(meetingId, { 
+
+      await updateMeeting(meetingId, {
         summary: generatedSummary,
         meetingType: selectedMeetingType
       });
-      
+
       toast.success('Summary generated successfully');
     } catch (error) {
       console.error('Error generating summary:', error);
@@ -198,7 +206,7 @@ export default function AudioRecorder({
 
   const handleNotesChange = useCallback((newNotes: string) => {
     setNotes(newNotes);
-    
+
     if (saveNotesTimeoutRef.current) {
       clearTimeout(saveNotesTimeoutRef.current);
     }
@@ -260,8 +268,8 @@ export default function AudioRecorder({
                 onClick={handleMicToggle}
                 className={`
                   w-12 h-12 rounded-full flex items-center justify-center transition-all
-                  ${isMicMuted 
-                    ? 'bg-purple-500 hover:bg-purple-600' 
+                  ${isMicMuted
+                    ? 'bg-purple-500 hover:bg-purple-600'
                     : 'bg-blue-500 hover:bg-blue-600'
                   }
                 `}
@@ -292,28 +300,87 @@ export default function AudioRecorder({
         </div>
       </div>
 
-      <div className="flex justify-end">
-        <button
-          onClick={scrollToNotes}
-          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          <FileText className="w-4 h-4 mr-2" />
-          Personal Notes
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-gray-900">Transcription</h2>
-          <TranscriptDisplay  transcript={transcript} speakers={speakers} />
+      <div className="space-y-4">
+        <div className="bg-white rounded-lg shadow-sm">
+          <nav className="flex" aria-label="Tabs">
+            {['Transcription', 'AI Summary', 'Personal Notes'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab.toLowerCase())}
+                className={`
+                  relative min-w-0 flex-1 overflow-hidden py-4 px-4 text-sm font-medium text-center
+                  hover:bg-gray-50 focus:z-10 focus:outline-none
+                  ${activeTab === tab.toLowerCase()
+                    ? 'text-indigo-600 bg-indigo-50 hover:bg-indigo-50'
+                    : 'text-gray-500 hover:text-gray-700'
+                  }
+                  ${tab === 'Transcription' ? 'rounded-l-lg' : ''}
+                  ${tab === 'Personal Notes' ? 'rounded-r-lg' : ''}
+                `}
+              >
+                <span className="relative">
+                {tab}
+                {activeTab === tab.toLowerCase() && (
+                  <span className="absolute inset-x-0 bottom-0 h-0.5 bg-indigo-500" />
+                )}
+                </span>
+              </button>
+            ))}
+          </nav>
         </div>
 
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-900">AI Summary</h2>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Globe className="w-4 h-4 text-gray-400" />
+        {activeTab === 'transcription' && (
+          <div className="space-y-4 bg-white rounded-lg shadow-sm border p-4">
+            <TranscriptDisplay transcript={transcript} speakers={speakers} onUpdateSpeaker={isRecording ? undefined : (oldName, newName) => {
+              const updatedSpeakers = speakers.map(speaker => ({
+                ...speaker,
+                speaker: speaker.speaker === oldName ? newName : speaker.speaker
+              }));
+
+              // Update local state
+              setSpeakers(updatedSpeakers);
+
+              // Notify parent component
+              if (onSpeakersChange) {
+                onSpeakersChange(updatedSpeakers);
+              }
+            }}/>
+          </div>
+        )}
+
+        {activeTab === 'ai summary' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex space-x-2 bg-gray-100 rounded-lg p-1">
+                {['Text', 'With Emojis', 'Mind Map'].map((view) => (
+                  <button
+                    key={view}
+                    onClick={() => {
+                      if (view === 'Text') {
+                        setShowEmojis(false);
+                        setShowMindMap(false);
+                      } else if (view === 'With Emojis') {
+                        setShowEmojis(true);
+                        setShowMindMap(false);
+                      } else {
+                        setShowMindMap(true);
+                      }
+                    }}
+                    className={`
+                      px-4 py-2 text-sm font-medium rounded-md transition-colors
+                      ${(view === 'Text' && !showEmojis && !showMindMap) ||
+                        (view === 'With Emojis' && showEmojis && !showMindMap) ||
+                        (view === 'Mind Map' && showMindMap)
+                        ? 'bg-white text-indigo-600 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-900'
+                      }
+                    `}
+                  >
+                    {view}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center space-x-4">
                 <select
                   value={selectedLanguage}
                   onChange={handleLanguageChange}
@@ -327,32 +394,19 @@ export default function AudioRecorder({
                     </option>
                   ))}
                 </select>
+                {(transcript || summary) && (
+                  <button
+                    onClick={() => setShowShareDialog(true)}
+                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    <Share2 className="w-4 h-4 mr-1.5" />
+                    Share
+                  </button>
+                )}
               </div>
-              <button
-                onClick={() => setShowEmojis(!showEmojis)}
-                className="text-sm text-gray-700 hover:text-indigo-600"
-              >
-                {showEmojis ? 'Hide Emojis' : 'Show Emojis'}
-              </button>
-              <button
-                onClick={() => setShowMindMap(!showMindMap)}
-                className="text-sm text-gray-700 hover:text-indigo-600"
-              >
-                {showMindMap ? 'Show Text' : 'Show Mind Map'}
-              </button>
-              {(transcript || summary) && (
-                <button
-                  onClick={() => setShowShareDialog(true)}
-                  className="text-sm text-gray-700 hover:text-indigo-600 flex items-center"
-                >
-                  <Share2 className="w-4 h-4 mr-1" />
-                  Share
-                </button>
-              )}
             </div>
-          </div>
 
-          <div className="bg-white rounded-lg shadow-sm border p-4 h-[400px] flex flex-col">
+            <div className="bg-white rounded-lg shadow-sm border p-4 h-[500px] flex flex-col">
             {summary ? (
               <>
                 <div className="mb-4 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 items-start sm:items-center">
@@ -420,20 +474,22 @@ export default function AudioRecorder({
                 )}
               </div>
             )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {activeTab === 'personal notes' && (
+          <div ref={notesRef} className="space-y-4 scroll-mt-8 bg-white rounded-lg shadow-sm border p-4">
+            <NoteEditor
+              content={notes}
+              onChange={handleNotesChange}
+              autoFocus={false}
+            />
+          </div>
+        )}
       </div>
 
-      <div ref={notesRef} className="space-y-4 scroll-mt-8">
-        <h2 className="text-xl font-semibold text-gray-900">Personal Notes</h2>
-        <NoteEditor
-          content={notes}
-          onChange={handleNotesChange}
-          autoFocus={false}
-        />
-      </div>
-
-      <NotificationManager 
+      <NotificationManager
         show={showNotification}
         status={notificationStatus}
         message={notificationMessage}

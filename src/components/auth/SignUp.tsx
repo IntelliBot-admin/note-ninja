@@ -20,6 +20,17 @@ export default function SignUp() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
+      console.log(user,"user created");
+      
+
+      // const response = await serverFetch('/users', {
+      //   method: 'POST',
+      //   body: JSON.stringify({
+      //     email: user.email,
+      //     uid: user.uid
+      //   })
+      // });
+
       // Create user document
       await setDoc(doc(db, 'users', user.uid), {
         email: user.email,

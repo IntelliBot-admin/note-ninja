@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/authStore';
+import { fetchCalendarEvents } from '../utils/calendarAuth';
 import { ActionItem } from '../types/actionItem';
 import ActionItemCalendarView from '../components/actionItems/ActionItemCalendarView';
 import TimelineView from '../components/actionItems/TimelineView';
@@ -15,6 +16,7 @@ type ViewMode = 'calendar' | 'timeline' | 'kanban';
 
 export default function CalendarView() {
   const [items, setItems] = useState<ActionItem[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<ViewMode>('calendar');
   const { user } = useAuthStore();
@@ -76,6 +78,19 @@ export default function CalendarView() {
 
   useEffect(() => {
     if (!user) return;
+
+    // Fetch calendar events
+    const loadCalendarEvents = async () => {
+      try {
+        const events = await fetchCalendarEvents(user.uid);
+        setCalendarEvents(events);
+      } catch (error) {
+        console.error('Error loading calendar events:', error);
+        toast.error('Failed to load calendar events');
+      }
+    };
+
+    loadCalendarEvents();
 
     const q = query(
       collection(db, 'actionItems'),

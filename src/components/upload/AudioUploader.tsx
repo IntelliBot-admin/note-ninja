@@ -83,6 +83,7 @@ export default function AudioUploader({
       const result = await transcribeAudio(audioUrl, meetingId);
       setTranscript(result.text);
       onTranscriptChange(result.text);
+      console.log(result.utterances);
       if (result.utterances) {
         setSpeakers(result.utterances);
         await onSpeakersChange(result.utterances);

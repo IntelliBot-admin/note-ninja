@@ -137,8 +137,8 @@ export default function AuthForm() {
               <>
                 <button
                   type="button"
+                  onClick={() => navigate('/signup')}
                   className="text-indigo-600 hover:text-indigo-500"
-                  onClick={() => setMode('register')}
                 >
                   Don't have an account? Sign up
                 </button>

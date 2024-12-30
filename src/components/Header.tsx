@@ -1,16 +1,20 @@
-import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { LogOut, User, Home, Calendar, Moon, Sun } from 'lucide-react';
+import { LogOut, User, Home, ListTodo, Moon, Sun, Settings, Quote, FileText, CheckSquare } from 'lucide-react';
 import { useRecordingStore } from '../store/recordingStore';
 import DarkModeToggle from './common/DarkModeToggle';
 import toast from 'react-hot-toast';
+import { useQuoteStore } from '../hooks/useQuoteVisibility';
+import UserStats from './stats/UserStats';
+import { useLayoutStore } from '../store/layoutStore';
 
 export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuthStore();
   const { isRecording } = useRecordingStore();
+  const { isSidebarLayout } = useLayoutStore();
+  const { isQuoteVisible, toggleQuoteVisibility } = useQuoteStore();
 
   const handleNavigation = (path: string) => {
     if (isRecording) {
@@ -30,6 +34,7 @@ export default function Header() {
 
   const isHome = location.pathname === '/';
   const isCalendar = location.pathname === '/calendar';
+  const isSettings = location.pathname === '/settings';
 
   console.log('isRecording', user);
 
@@ -40,9 +45,19 @@ export default function Header() {
 
   return (
     <header className={`bg-white dark:bg-gray-800 shadow ${headerClass}`}>
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-2 sm:py-4">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-2 sm:space-x-4 min-w-0">
+      <div className={`${
+        isSidebarLayout
+          ? 'h-full'
+          : 'max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-2 sm:py-4'
+      }`}>
+        <div className={`${
+          isSidebarLayout
+            ? 'flex flex-col h-full'
+            : 'flex justify-between items-center'
+        }`}>
+          <div className={`flex items-center ${
+            isSidebarLayout ? 'justify-center p-4' : 'space-x-2 sm:space-x-4 min-w-0'
+          }`}>
             {!isHome && (
               <button
                 onClick={() => handleNavigation('/')}
@@ -73,40 +88,126 @@ export default function Header() {
               </h1>
             </div>
           </div>
-          <div className="flex items-center space-x-2 sm:space-x-4">
-            <button
-              onClick={() => handleNavigation('/calendar')}
-              disabled={isRecording}
-              className={`p-2 rounded-full transition-colors ${
-                isRecording 
-                  ? 'opacity-50 cursor-not-allowed text-gray-300'
-                  : isCalendar 
-                    ? 'text-indigo-600 bg-indigo-50' 
-                    : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-100'
-              }`}
-              title={isRecording ? 'Stop recording to navigate' : 'View Calendar'}
-            >
-              <Calendar className="w-5 h-5" />
-            </button>
-            <div className="hidden sm:flex items-center text-sm text-gray-700">
+          {!isSidebarLayout && <UserStats userId={user.uid} />}
+          
+          {isSidebarLayout && (
+            <div className="px-4">
+              <UserStats userId={user.uid} isSidebarLayout={true} />
+            </div>
+          )}
+          
+          <div className={`flex ${
+            isSidebarLayout 
+              ? 'flex-col space-y-2 flex-1 px-4 py-2 min-h-0' 
+              : 'items-center space-x-2 sm:space-x-4'
+          }`}>
+            {isSidebarLayout ? (
+              <>
+                <button
+                  onClick={() => handleNavigation('/calendar')}
+                  disabled={isRecording}
+                  className={`flex items-center w-full p-3 rounded-lg transition-colors ${
+                    isRecording 
+                      ? 'opacity-50 cursor-not-allowed text-gray-300'
+                      : isCalendar 
+                        ? 'text-indigo-600 bg-indigo-50' 
+                        : 'text-gray-600 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <ListTodo className="w-5 h-5 mr-3" />
+                  <span className="text-sm dark:text-gray-300">Action Items</span>
+                </button>
+                <button
+                  onClick={() => handleNavigation('/settings')}
+                  disabled={isRecording}
+                  className={`flex items-center w-full p-3 rounded-lg transition-colors ${
+                    isRecording 
+                      ? 'opacity-50 cursor-not-allowed text-gray-300'
+                      : isSettings
+                        ? 'text-indigo-600 bg-indigo-50' 
+                        : 'text-gray-600 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <Settings className="w-5 h-5 mr-3" />
+                  <span className="text-sm dark:text-gray-300">Settings</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => handleNavigation('/calendar')}
+                  disabled={isRecording}
+                  className={`p-2 rounded-full transition-colors ${
+                    isRecording 
+                      ? 'opacity-50 cursor-not-allowed text-gray-300'
+                      : isCalendar 
+                        ? 'text-indigo-600 bg-indigo-50' 
+                        : 'text-gray-600 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <ListTodo className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => handleNavigation('/settings')}
+                  disabled={isRecording}
+                  className={`p-2 rounded-full transition-colors ${
+                    isRecording 
+                      ? 'opacity-50 cursor-not-allowed text-gray-300'
+                      : isSettings
+                        ? 'text-indigo-600 bg-indigo-50' 
+                        : 'text-gray-600 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <Settings className="w-5 h-5" />
+                </button>
+              </>
+            )}
+            
+            <div className={`${
+              isSidebarLayout 
+                ? 'flex items-center p-3 text-sm text-gray-700 dark:text-gray-300 bg-white/50 dark:bg-gray-700/50 rounded-lg mt-auto mb-2' 
+                : 'hidden sm:flex items-center text-sm text-gray-700 dark:text-gray-300'
+            }`}>
               <User className="w-4 h-4 mr-1" />
               {user.email}
             </div>
-            <DarkModeToggle />
+            
+            <div className={`flex items-center ${
+              isSidebarLayout 
+                ? 'justify-around w-full p-3 bg-white/50 dark:bg-gray-700/50 rounded-lg' 
+                : 'space-x-2'
+            }`}>
+              <DarkModeToggle />
+              <button
+                onClick={toggleQuoteVisibility}
+                className={`p-2 rounded-full transition-colors ${
+                  isQuoteVisible 
+                    ? 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100' 
+                    : 'text-gray-400 dark:text-gray-300 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+                title={isQuoteVisible ? 'Hide daily inspiration' : 'Show daily inspiration'}
+              >
+                <Quote className="w-5 h-5" />
+              </button>
+            </div>
+            
             <button
               onClick={handleSignOut}
               disabled={isRecording}
-              className={`inline-flex items-center px-2 sm:px-3 py-1.5 border border-transparent text-sm font-medium rounded-md ${
+              className={`inline-flex items-center mt-2 ${
+                isSidebarLayout 
+                  ? 'w-full justify-center p-3 rounded-lg bg-white/50 dark:bg-gray-700/50'
+                  : 'px-2 sm:px-3 py-1.5 rounded-md'
+              } border border-transparent text-sm font-medium ${
                 isRecording
                   ? 'opacity-50 cursor-not-allowed text-gray-300 bg-gray-100'
-                  : 'text-gray-700 bg-gray-100 hover:bg-gray-200'
+                  : 'text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
-              title={isRecording ? 'Stop recording to sign out' : 'Sign out'}
             >
               <LogOut className="w-4 h-4 sm:mr-1" />
-              <span className="hidden sm:inline">Sign out</span>
+              <span className={isSidebarLayout ? 'ml-2' : 'hidden sm:inline'}>Sign out</span>
             </button>
-          </div>
+           </div>
         </div>
       </div>
     </header>
