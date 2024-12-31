@@ -7,6 +7,7 @@ import { Speaker } from '../types/transcription';
 import { useWakeLock } from './useWakeLock';
 import { useMediaSession } from './useMediaSession';
 import { socket } from '../lib/socket';
+import { useSubscription } from './useSubscription';
 
 
 interface UseAudioRecorderProps {
@@ -35,13 +36,6 @@ interface TranscriptMessage {
   text_formatted: boolean;
 }
 
-// Add type for the event handlers
-type TranscriberEvents = {
-  'transcript': (message: TranscriptMessage) => void;
-  'error': (error: any) => void;
-  'close': () => void;
-  'open': () => void;
-};
 
 export function useAudioRecorder({
   meetingId,
@@ -67,6 +61,7 @@ export function useAudioRecorder({
       stopRecording();
     }
   });
+  const { planName } = useSubscription(); 
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -78,6 +73,9 @@ export function useAudioRecorder({
   const systemStreamRef = useRef<MediaStream | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const accumulatedSpeakersRef = useRef<Speaker[]>([]);
+
+  // Add constant for max duration (in seconds)
+  const MAX_FREE_DURATION = 600; // 10 minutes
 
   const clearTimer = useCallback(() => {
     if (intervalRef.current) {
@@ -121,38 +119,38 @@ export function useAudioRecorder({
     }
   };
 
-  const handleTranscriptUpdate = (message: TranscriptMessage) => {
-    console.log('Received transcript:', message);
+  // const handleTranscriptUpdate = (message: TranscriptMessage) => {
+  //   console.log('Received transcript:', message);
 
-    if (message.message_type === "PartialTranscript") {
-      // Update the partial transcript
-      partialTranscriptRef.current = message.text;
+  //   if (message.message_type === "PartialTranscript") {
+  //     // Update the partial transcript
+  //     partialTranscriptRef.current = message.text;
 
-      // Get the latest transcript value using a callback to ensure we have the most recent state
-      setCurrentTranscript(prev => {
-        const displayText = `${prev}${message.text}`;
-        onTranscriptUpdate(displayText);
-        return prev; // Don't update the current transcript yet, just display it
-      });
-    }
-    else if (message.message_type === "FinalTranscript" && message.text && message.text.trim()) {
-      // Clear the partial transcript since we're getting a final version
-      partialTranscriptRef.current = '';
+  //     // Get the latest transcript value using a callback to ensure we have the most recent state
+  //     setCurrentTranscript(prev => {
+  //       const displayText = `${prev}${message.text}`;
+  //       onTranscriptUpdate(displayText);
+  //       return prev; // Don't update the current transcript yet, just display it
+  //     });
+  //   }
+  //   else if (message.message_type === "FinalTranscript" && message.text && message.text.trim()) {
+  //     // Clear the partial transcript since we're getting a final version
+  //     partialTranscriptRef.current = '';
 
-      // Update the current transcript with the finalized text
-      setCurrentTranscript(prev => {
-        const needsSpace = prev && !prev.match(/[.!?,]$/);
-        const newTranscript = prev
-          ? (needsSpace ? `${prev} ${message.text}` : `${prev}${message.text}`)
-          : message.text;
+  //     // Update the current transcript with the finalized text
+  //     setCurrentTranscript(prev => {
+  //       const needsSpace = prev && !prev.match(/[.!?,]$/);
+  //       const newTranscript = prev
+  //         ? (needsSpace ? `${prev} ${message.text}` : `${prev}${message.text}`)
+  //         : message.text;
 
-        onTranscriptUpdate(newTranscript);
-        return newTranscript;
-      });
+  //       onTranscriptUpdate(newTranscript);
+  //       return newTranscript;
+  //     });
 
-      lastMessageRef.current = message;
-    }
-  };
+  //     lastMessageRef.current = message;
+  //   }
+  // };
 
   const handleSpeakerData = useCallback((data: any) => {
     const words = data.channel?.alternatives[0]?.words || [];
@@ -326,7 +324,7 @@ export function useAudioRecorder({
       setShowNotification(false);
       toast.error(error.message || 'Failed to start recording');
     }
-  }, [meetingId, onAudioUrlUpdate, clearTimer, getRecordingStream, setupMediaRecorder]);
+  }, [meetingId, onAudioUrlUpdate, clearTimer, getRecordingStream, setupMediaRecorder, planName]);
 
   const stopRecording = useCallback(async () => {
     if (isRecording) {
@@ -510,6 +508,17 @@ export function useAudioRecorder({
       socket.off('data');
     };
   }, [socket]);
+
+  useEffect(() => {
+    console.log("elapsedTime", elapsedTime);
+    
+    // Auto-stop recording for free planName users at 10 minutes        
+    if (planName === 'Free' && elapsedTime >= MAX_FREE_DURATION && isRecording) {
+      toast.error('Free plan is limited to 10 minutes of recording');
+      console.log("inside of if");
+      stopRecording();
+    }
+  }, [elapsedTime, isRecording, planName, stopRecording]);
 
   return {
     isRecording,

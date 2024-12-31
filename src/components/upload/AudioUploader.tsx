@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { FileAudio, Loader2 } from 'lucide-react';
 import { transcribeAudio } from '../../services/assemblyAI';
@@ -12,6 +12,7 @@ import { Share2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { transcribeAudioFromYoutube, uploadAudioFile } from '../../utils/audioHelpers';
 import { Speaker } from '../../types/transcription';
+import { useSubscription } from '../../hooks/useSubscription';
 
 interface AudioUploaderProps {
   meetingId: string;
@@ -26,7 +27,7 @@ interface AudioUploaderProps {
   initialSpeakers?: Speaker[];
 }
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB limit
+
 
 export default function AudioUploader({
   meetingId,
@@ -53,18 +54,28 @@ export default function AudioUploader({
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [speakers, setSpeakers] = useState<Speaker[]>(initialSpeakers);
   const [youtubeLink, setYoutubeLink] = useState<string>('');
+  const [MAX_FILE_SIZE, setMAX_FILE_SIZE] = useState(5 * 1024 * 1024);
+  const { planName } = useSubscription();
+
+  useEffect(() => {
+    setMAX_FILE_SIZE(planName === 'Free' ? 5 * 1024 * 1024 : 150 * 1024 * 1024);
+  }, [planName]);
+
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const audioFile = acceptedFiles[0];
+    console.log("audioFile.size", audioFile.size);
+    console.log("MAX_FILE_SIZE", MAX_FILE_SIZE);
+
     if (!audioFile) return;
 
     if (audioFile.type !== 'audio/mpeg' && !audioFile.type.includes('audio/mp3')) {
       toast.error('Please upload an MP3 file');
       return;
     }
-
+    
     if (audioFile.size > MAX_FILE_SIZE) {
-      toast.error('File size exceeds 50MB limit');
+      toast.error(`File size exceeds ${formatFileSize(MAX_FILE_SIZE)} limit`);
       return;
     }
 
@@ -98,7 +109,7 @@ export default function AudioUploader({
     } finally {
       setIsProcessing(false);
     }
-  }, [onAudioUrlUpdate, onTranscriptChange]);
+  }, [onAudioUrlUpdate, onTranscriptChange, MAX_FILE_SIZE]);
 
   const handleGenerateSummary = async () => {
     if (!transcript) {

@@ -12,12 +12,13 @@ import ShareDialog from '../share/ShareDialog';
 import DurationWarningModal from './DurationWarningModal';
 import NoteEditor from '../notes/NoteEditor';
 import RecordingInstructions from './RecordingInstructions';
-import { Share2, FileText, VolumeX, Volume2 } from 'lucide-react';
+import { Share2, VolumeX, Volume2 } from 'lucide-react';
 import { useMeetingStore } from '../../store/meetingStore';
 import { translateText, SUPPORTED_LANGUAGES } from '../../utils/translate';
 import toast from 'react-hot-toast';
 import { isMobile } from 'react-device-detect';
 import { Speaker } from '../../types/transcription';
+import { debounce } from 'lodash';
 
 
 const SHOW_INSTRUCTIONS_KEY = 'showRecordingInstructions';
@@ -79,6 +80,14 @@ export default function AudioRecorder({
   const saveNotesTimeoutRef = useRef<NodeJS.Timeout>();
   const saveTranscriptTimeoutRef = useRef<NodeJS.Timeout>();
 
+  const debouncedSpeakersChange = useRef(
+    debounce((newSpeakers: Speaker[]) => {
+      if (onSpeakersChange) {
+        onSpeakersChange(newSpeakers);
+      }
+    }, 4000)
+  ).current;
+
   const {
     isRecording,
     audioUrl,
@@ -122,16 +131,14 @@ export default function AudioRecorder({
     },
     onSpeakersUpdate: (newSpeakers: Speaker[]) => {
       setSpeakers(newSpeakers);
-      console.log(newSpeakers);
+      debouncedSpeakersChange(newSpeakers);
     }
   });
 
   const handleRecordClick = () => {
     if (isRecording) {
       stopRecording();
-      if (onSpeakersChange) {
-        onSpeakersChange(speakers);
-      }
+      
     } else {
       startRecordingFn();
       // Show instructions after Chrome dialog appears with shorter delay
@@ -242,6 +249,13 @@ export default function AudioRecorder({
       }
     };
   }, []);
+
+  useEffect(() => {
+    return () => {
+      debouncedSpeakersChange.cancel();
+    };
+  }, [debouncedSpeakersChange]);
+
   const handleMicToggle = () => {
     console.log('Mic toggle clicked');
     if (isMicMuted) {
