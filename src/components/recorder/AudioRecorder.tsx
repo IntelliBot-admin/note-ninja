@@ -19,6 +19,7 @@ import toast from 'react-hot-toast';
 import { isMobile } from 'react-device-detect';
 import { Speaker } from '../../types/transcription';
 import { debounce } from 'lodash';
+import { getStorage, ref, getBlob } from 'firebase/storage';
 
 
 const SHOW_INSTRUCTIONS_KEY = 'showRecordingInstructions';
@@ -69,6 +70,8 @@ export default function AudioRecorder({
   const [selectedLanguage, setSelectedLanguage] = useState<string>('');
   const [translatedSummary, setTranslatedSummary] = useState<string>('');
   const [isTranslating, setIsTranslating] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+
   const [showInstructions, setShowInstructions] = useState(() => {
     if (isMobile) return false;
     const savedPreference = localStorage.getItem(SHOW_INSTRUCTIONS_KEY);
@@ -90,10 +93,8 @@ export default function AudioRecorder({
 
   const {
     isRecording,
-    audioUrl,
     startRecording: startRecordingFn,
     stopRecording,
-    downloadRecording,
     notificationStatus,
     showNotification,
     notificationMessage,
@@ -103,6 +104,7 @@ export default function AudioRecorder({
     muteMic,
     unmuteMic
   } = useAudioRecorder({
+    setAudioUrl,
     meetingId,
     onAudioUrlUpdate: async (url: string) => {
       setIsProcessing(true);
@@ -138,7 +140,7 @@ export default function AudioRecorder({
   const handleRecordClick = () => {
     if (isRecording) {
       stopRecording();
-      
+
     } else {
       startRecordingFn();
       // Show instructions after Chrome dialog appears with shorter delay
@@ -151,6 +153,43 @@ export default function AudioRecorder({
     setShowInstructions(!value);
     setShowingInstructions(false);
   };
+
+  async function downloadRecording() {
+    try {
+      const storage = getStorage();
+      const url = audioUrl || initialAudioUrl;
+      
+      if (!url) {
+        throw new Error('No audio URL available');
+      }
+
+      // Get the part after '/o/' and remove query parameters
+      const pathPart = url.split('/o/')[1];
+      const path = decodeURIComponent(pathPart.split('?')[0]);
+      const audioRef = ref(storage, path);
+
+      // Get the blob directly instead of the download URL
+      const blob = await getBlob(audioRef);
+      
+      // Create object URL from blob
+      const blobUrl = URL.createObjectURL(blob);
+      
+      // Create and trigger download
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `recording_${Date.now()}.mp3`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up the blob URL after download starts
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 300);
+
+    } catch (error) {
+      console.error('Error downloading recording:', error);
+      toast.error('Failed to download recording');
+    }
+  }
 
   const { showWarning, countdown, keepRecording } = useRecordingDuration(
     isRecording,
@@ -333,10 +372,10 @@ export default function AudioRecorder({
                 `}
               >
                 <span className="relative">
-                {tab}
-                {activeTab === tab.toLowerCase() && (
-                  <span className="absolute inset-x-0 bottom-0 h-0.5 bg-indigo-500" />
-                )}
+                  {tab}
+                  {activeTab === tab.toLowerCase() && (
+                    <span className="absolute inset-x-0 bottom-0 h-0.5 bg-indigo-500" />
+                  )}
                 </span>
               </button>
             ))}
@@ -358,7 +397,7 @@ export default function AudioRecorder({
               if (onSpeakersChange) {
                 onSpeakersChange(updatedSpeakers);
               }
-            }}/>
+            }} />
           </div>
         )}
 
@@ -421,17 +460,52 @@ export default function AudioRecorder({
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border p-4 h-[500px] flex flex-col">
-            {summary ? (
-              <>
-                <div className="mb-4 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 items-start sm:items-center">
+              {summary ? (
+                <>
+                  <div className="mb-4 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 items-start sm:items-center">
+                    <select
+                      value={selectedMeetingType}
+                      onChange={(e) => {
+                        const newType = e.target.value as MeetingType;
+                        setSelectedMeetingType(newType);
+                        onSummaryChange(summary, newType);
+                      }}
+                      className="w-full sm:w-64 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    >
+                      {Object.entries(meetingTypes).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={handleGenerateSummary}
+                      className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                      disabled={isGeneratingSummary}
+                    >
+                      {isGeneratingSummary ? 'Generating...' : 'Regenerate'}
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto">
+                    {isTranslating ? (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                      </div>
+                    ) : showMindMap ? (
+                      <MindMap summary={translatedSummary || summary} meetingType={selectedMeetingType} />
+                    ) : (
+                      <div className="prose prose-sm max-w-none">
+                        <div dangerouslySetInnerHTML={{ __html: translatedSummary || summary }} />
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full">
                   <select
                     value={selectedMeetingType}
-                    onChange={(e) => {
-                      const newType = e.target.value as MeetingType;
-                      setSelectedMeetingType(newType);
-                      onSummaryChange(summary, newType);
-                    }}
-                    className="w-full sm:w-64 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    onChange={(e) => setSelectedMeetingType(e.target.value as MeetingType)}
+                    className="w-full sm:w-64 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mb-4"
                   >
                     {Object.entries(meetingTypes).map(([value, label]) => (
                       <option key={value} value={value}>
@@ -439,55 +513,20 @@ export default function AudioRecorder({
                       </option>
                     ))}
                   </select>
-                  <button
-                    onClick={handleGenerateSummary}
-                    className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-                    disabled={isGeneratingSummary}
-                  >
-                    {isGeneratingSummary ? 'Generating...' : 'Regenerate'}
-                  </button>
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                  {isTranslating ? (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                    </div>
-                  ) : showMindMap ? (
-                    <MindMap summary={translatedSummary || summary} meetingType={selectedMeetingType} />
-                  ) : (
-                    <div className="prose prose-sm max-w-none">
-                      <div dangerouslySetInnerHTML={{ __html: translatedSummary || summary }} />
-                    </div>
+                  <p className="text-gray-500">
+                    {isProcessing ? 'Processing audio...' : transcript ? 'Click Generate AI Summary to continue' : 'Record audio to get started'}
+                  </p>
+                  {transcript && !isProcessing && (
+                    <button
+                      onClick={handleGenerateSummary}
+                      className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                      disabled={isGeneratingSummary}
+                    >
+                      {isGeneratingSummary ? 'Generating...' : 'Generate AI Summary'}
+                    </button>
                   )}
                 </div>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full">
-                <select
-                  value={selectedMeetingType}
-                  onChange={(e) => setSelectedMeetingType(e.target.value as MeetingType)}
-                  className="w-full sm:w-64 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mb-4"
-                >
-                  {Object.entries(meetingTypes).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-gray-500">
-                  {isProcessing ? 'Processing audio...' : transcript ? 'Click Generate AI Summary to continue' : 'Record audio to get started'}
-                </p>
-                {transcript && !isProcessing && (
-                  <button
-                    onClick={handleGenerateSummary}
-                    className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-                    disabled={isGeneratingSummary}
-                  >
-                    {isGeneratingSummary ? 'Generating...' : 'Generate AI Summary'}
-                  </button>
-                )}
-              </div>
-            )}
+              )}
             </div>
           </div>
         )}

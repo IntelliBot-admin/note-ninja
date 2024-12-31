@@ -15,6 +15,7 @@ interface UseAudioRecorderProps {
   onAudioUrlUpdate: (url: string) => Promise<void>;
   onTranscriptUpdate: (transcript: string, translatedTexts?: Record<string, string>) => void;
   onSpeakersUpdate: (speakers: Speaker[]) => void;
+  setAudioUrl: (url: string) => void;
 }
 
 interface TranscriptWord {
@@ -41,10 +42,10 @@ export function useAudioRecorder({
   meetingId,
   onAudioUrlUpdate,
   onTranscriptUpdate,
-  onSpeakersUpdate
+  onSpeakersUpdate,
+  setAudioUrl
 }: UseAudioRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isSystemAudio, setIsSystemAudio] = useState(false);
   const [notificationStatus, setNotificationStatus] = useState<'recording' | 'processing' | 'transcribing' | 'completed' | 'error'>('recording');
@@ -75,7 +76,7 @@ export function useAudioRecorder({
   const accumulatedSpeakersRef = useRef<Speaker[]>([]);
 
   // Add constant for max duration (in seconds)
-  const MAX_FREE_DURATION = 600; // 10 minutes
+  const MAX_FREE_DURATION = 1800; // 30 minutes
 
   const clearTimer = useCallback(() => {
     if (intervalRef.current) {
@@ -405,20 +406,6 @@ export function useAudioRecorder({
     }
   }, [isRecording, clearTimer]);
 
-  const downloadRecording = useCallback(() => {
-    if (audioUrl) {
-      try {
-        const link = document.createElement('a');
-        link.href = audioUrl;
-        link.download = `recording_${Date.now()}.mp3`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } catch (error) {
-        console.error('Download error:', error);
-      }
-    }
-  }, [audioUrl]);
 
   const muteMic = useCallback(() => {
     if (micStreamRef.current) {
@@ -522,12 +509,10 @@ export function useAudioRecorder({
 
   return {
     isRecording,
-    audioUrl,
     duration: elapsedTime,
     formatDuration,
     startRecording,
     stopRecording,
-    downloadRecording,
     isSystemAudio,
     setIsSystemAudio,
     notificationStatus,
