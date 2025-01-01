@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { onSnapshot, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, Timestamp, where } from 'firebase/firestore';
 import { useAuthStore } from '../store/authStore';
 import { useMeetingStore } from '../store/meetingStore';
 import { useUIStore } from '../store/uiStore';
@@ -12,6 +12,9 @@ import CalendarView from '../components/calendar/CalendarView';
 import CategoryManager from '../components/categories/CategoryManager';
 import toast from 'react-hot-toast';
 import { Meeting } from '../types/meeting';
+import { useNotificationStore } from '../store/notificationStore';
+import NotificationBanner from '../components/NotificationBanner';
+import { db } from '../lib/firebase';
 
 const postItColors = [
   'bg-yellow-100',
@@ -49,6 +52,7 @@ export default function Dashboard() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showViewPreferenceModal, setShowViewPreferenceModal] = useState(false);
   const [pendingViewMode, setPendingViewMode] = useState<ViewMode>('grid');
+  const { setNotifications } = useNotificationStore();
 
   useEffect(() => {
     if (!user) return;
@@ -134,6 +138,33 @@ export default function Dashboard() {
 
     setFilteredMeetings(result);
   }, [meetings, searchQuery, sortConfig, selectedCategory]);
+
+
+  useEffect(() => {
+    const notificationsQuery = query(
+      collection(db, 'notifications'),
+      where('isActive', '==', true)
+    );
+  
+    const unsubscribe = onSnapshot(
+      notificationsQuery,
+      (snapshot) => {
+        const notifications = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        console.log(notifications, 'notifications');
+        setNotifications(notifications);
+      },
+      (error) => {
+        console.error('Error fetching notifications:', error);
+        toast.error('Failed to load notifications');
+      }
+    );
+  
+    return () => unsubscribe();
+  }, []); 
 
   const handleDelete = async (meeting: Meeting) => {
     setDeletingMeeting(meeting);
