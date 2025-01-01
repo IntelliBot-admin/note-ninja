@@ -1,6 +1,4 @@
 import { create } from 'zustand';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { db } from '../lib/firebase';
 import { Timestamp } from 'firebase/firestore';
 
 interface Notification {

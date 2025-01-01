@@ -126,6 +126,16 @@ export const useMeetingStore = create<MeetingStore>((set) => ({
         }
       }
 
+      // Handle recommended action items updates based on source
+      let recommendedActionItemsUpdates = {};
+      if (updates.recommendedActionItems !== undefined) {
+        if (source === 'record') {
+          recommendedActionItemsUpdates = { recordRecommendedActionItems: updates.recommendedActionItems };
+        } else if (source === 'upload') {
+          recommendedActionItemsUpdates = { uploadRecommendedActionItems: updates.recommendedActionItems };
+        }
+      }
+
       // Remove any undefined values to prevent Firestore errors
       const cleanedUpdates = Object.entries({
         ...updates,
@@ -134,6 +144,7 @@ export const useMeetingStore = create<MeetingStore>((set) => ({
         ...summaryUpdates,
         ...durationUpdates,
         ...speakersUpdates,
+        ...recommendedActionItemsUpdates,
         source,
         updatedAt: Timestamp.now()
       }).reduce((acc, [key, value]) => {

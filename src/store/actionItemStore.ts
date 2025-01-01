@@ -11,7 +11,8 @@ import {
   where
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { ActionItem } from '../types/actionItem';
+import { ActionItem, Contact, Priority } from '../types/actionItem';
+import { format } from 'date-fns';
 
 interface ActionItemStore {
   getActionItemsQuery: (meetingId: string, userId: string) => Query;
@@ -19,9 +20,21 @@ interface ActionItemStore {
   updateActionItem: (itemId: string, updates: Partial<Omit<ActionItem, 'id' | 'meetingId' | 'userId'>>) => Promise<void>;
   deleteActionItem: (itemId: string) => Promise<void>;
   toggleComplete: (itemId: string, currentStatus: string) => Promise<void>;
+  formData: {
+    title: string;
+    description: string;
+    priority: Priority;
+    dueDate: string;
+    status: string;
+    contacts: Contact[];
+  };
+  setFormData: (data: Partial<ActionItemStore['formData']>) => void;
+  resetFormData: () => void;
+  setShowForm: (show: boolean) => void;
+  showForm: boolean;
 }
 
-export const useActionItemStore = create<ActionItemStore>(() => ({
+export const useActionItemStore = create<ActionItemStore>((set) => ({
   getActionItemsQuery: (meetingId: string, userId: string) => {
     return query(
       collection(db, 'actionItems'),
@@ -94,5 +107,32 @@ export const useActionItemStore = create<ActionItemStore>(() => ({
       console.error('Error toggling action item status:', error);
       throw new Error('Failed to update action item status');
     }
-  }
+  },
+
+  formData: {
+    title: '',
+    description: '',
+    priority: 'medium',
+    dueDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+    status: 'pending',
+    contacts: []
+  },
+
+  setFormData: (data) => set((state) => ({
+    formData: { ...state.formData, ...data }
+  })),
+
+  resetFormData: () => set((state) => ({
+    formData: {
+      title: '',
+      description: '',
+      priority: 'medium',
+      dueDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+      status: 'pending',
+      contacts: []
+    }
+  })),  
+
+  setShowForm: (show) => set({ showForm: show }),
+  showForm: false
 }));

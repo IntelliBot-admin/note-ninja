@@ -12,7 +12,7 @@ import ShareDialog from '../share/ShareDialog';
 import DurationWarningModal from './DurationWarningModal';
 import NoteEditor from '../notes/NoteEditor';
 import RecordingInstructions from './RecordingInstructions';
-import { Share2, VolumeX, Volume2 } from 'lucide-react';
+import { Share2, VolumeX, Volume2, Plus } from 'lucide-react';
 import { useMeetingStore } from '../../store/meetingStore';
 import { translateText, SUPPORTED_LANGUAGES } from '../../utils/translate';
 import toast from 'react-hot-toast';
@@ -20,6 +20,8 @@ import { isMobile } from 'react-device-detect';
 import { Speaker } from '../../types/transcription';
 import { debounce } from 'lodash';
 import { getStorage, ref, getBlob } from 'firebase/storage';
+import { useActionItemStore } from '../../store/actionItemStore';
+import { useNavigationStore } from '../../store/navigationStore';
 
 
 const SHOW_INSTRUCTIONS_KEY = 'showRecordingInstructions';
@@ -37,7 +39,13 @@ interface AudioRecorderProps {
   initialMeetingType?: MeetingType;
   initialNotes?: string;
   initialSpeakers?: Speaker[];
+  initialRecommendedActionItems?: ActionItem[];
   meetingId: string;
+}
+
+interface ActionItem {
+  title: string;
+  description: string;
 }
 
 export default function AudioRecorder({
@@ -53,6 +61,7 @@ export default function AudioRecorder({
   initialMeetingType = 'general',
   initialNotes = '',
   initialSpeakers = [],
+  initialRecommendedActionItems = [],
   meetingId
 }: AudioRecorderProps) {
   const [transcript, setTranscript] = useState(initialTranscript);
@@ -71,6 +80,10 @@ export default function AudioRecorder({
   const [translatedSummary, setTranslatedSummary] = useState<string>('');
   const [isTranslating, setIsTranslating] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [actionItems, setActionItems] = useState<ActionItem[]>(initialRecommendedActionItems);
+
+  const { setShowForm, setFormData } = useActionItemStore();
+  const { setActiveTab: setActiveTabNavigation } = useNavigationStore();
 
   const [showInstructions, setShowInstructions] = useState(() => {
     if (isMobile) return false;
@@ -196,6 +209,17 @@ export default function AudioRecorder({
     stopRecording
   );
 
+  const addToActionItemModal = (item: ActionItem) => {
+    setActiveTabNavigation('actions');
+    setShowForm(true);
+    if(item.title && item.description) {
+      setFormData({
+        title: item.title,
+        description: item.description
+      });
+    }
+  };
+
   const handleGenerateSummary = async () => {
     if (!transcript) {
       toast.error('Please record audio first');
@@ -204,13 +228,18 @@ export default function AudioRecorder({
 
     setIsGeneratingSummary(true);
     try {
-      const generatedSummary = await generateSummary(transcript, selectedMeetingType, showEmojis);
-      setSummary(generatedSummary);
-      onSummaryChange(generatedSummary, selectedMeetingType);
+      const { summary, actionItems } = await generateSummary(transcript, selectedMeetingType, showEmojis);
+      setSummary(summary);
+      setActionItems(actionItems || []);
+      onSummaryChange(summary, selectedMeetingType);
+
+      
 
       await updateMeeting(meetingId, {
-        summary: generatedSummary,
-        meetingType: selectedMeetingType
+        summary: summary,
+        meetingType: selectedMeetingType,
+        recommendedActionItems: actionItems,
+        source: 'record'
       });
 
       toast.success('Summary generated successfully');
@@ -486,7 +515,7 @@ export default function AudioRecorder({
                       {isGeneratingSummary ? 'Generating...' : 'Regenerate'}
                     </button>
                   </div>
-                  <div className="flex-1 overflow-y-auto">
+                  <div className="flex-1 overflow-hidden">
                     {isTranslating ? (
                       <div className="flex items-center justify-center h-full">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -494,8 +523,47 @@ export default function AudioRecorder({
                     ) : showMindMap ? (
                       <MindMap summary={translatedSummary || summary} meetingType={selectedMeetingType} />
                     ) : (
-                      <div className="prose prose-sm max-w-none">
-                        <div dangerouslySetInnerHTML={{ __html: translatedSummary || summary }} />
+                      <div className="flex gap-6 h-[calc(500px-4rem)]">
+                        <div className="flex-1 overflow-y-auto pr-6">
+                          <div className="prose prose-sm max-w-none">
+                            <div dangerouslySetInnerHTML={{ __html: translatedSummary || summary }} />
+                          </div>
+                        </div>
+                        
+                        {!showMindMap && actionItems && actionItems.length > 0 && (
+                          <div className="w-1/3 border-l pl-6 flex flex-col">
+                            <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center sticky top-0 bg-white py-2">
+                              <span className="mr-2">📋</span> Recommended Action Items
+                            </h3>
+                            <div className="space-y-2 overflow-y-auto pr-6 pb-6 scrollbar-hide">
+                              {actionItems.map((item, index) => (
+                                <div 
+                                  key={index} 
+                                  className="bg-gray-50 p-3 rounded-md border border-gray-200 hover:border-indigo-200 transition-colors text-sm group"
+                                >
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <h4 className="font-medium text-gray-900 flex items-center text-sm">
+                                        <span className="mr-2">•</span>
+                                        {item.title}
+                                      </h4>
+                                      <p className="text-gray-600 mt-0.5 ml-4 text-xs leading-relaxed">
+                                        {item.description}
+                                      </p>
+                                    </div>
+                                    <button 
+                                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 rounded-md"
+                                      title="Add Action Item"
+                                      onClick={() => addToActionItemModal(item)}
+                                    >
+                                      <Plus className="w-4 h-4 text-gray-600" />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

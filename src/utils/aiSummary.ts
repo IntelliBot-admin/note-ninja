@@ -4,7 +4,7 @@ export async function generateSummary(
   transcript: string, 
   meetingType: string,
   includeEmojis: boolean = true
-): Promise<string> {
+): Promise<{summary: string, actionItems: {title: string, description: string}[]}> {
   const data = await apiFetch('/generateAISummary', {
     method: 'POST',
     headers: {
@@ -17,6 +17,6 @@ export async function generateSummary(
     })
   });
   
-  return data.summary;
+  return data;
 }
 

@@ -16,21 +16,9 @@ interface ActionItemFormProps {
 
 export default function ActionItemForm({ meetingId, onClose, editingItem }: ActionItemFormProps) {
   const { user } = useAuthStore();
-  const { addActionItem, updateActionItem } = useActionItemStore();
+  const { addActionItem, updateActionItem, formData, setFormData, resetFormData } = useActionItemStore();
   const [loading, setLoading] = useState(false);
   const [showContactForm, setShowContactForm] = useState(false);
-
-  // Initialize with current date formatted for datetime-local input
-  const initialDate = format(new Date(), "yyyy-MM-dd'T'HH:mm");
-
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    priority: 'medium' as Priority,
-    dueDate: initialDate,
-    status: 'pending',
-    contacts: [] as Contact[]
-  });
 
   useEffect(() => {
     if (editingItem) {
@@ -46,8 +34,8 @@ export default function ActionItemForm({ meetingId, onClose, editingItem }: Acti
         status: editingItem.status,
         contacts: editingItem.contacts || []
       });
-    }
-  }, [editingItem]);
+    } 
+  }, [editingItem, setFormData, resetFormData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,27 +79,24 @@ export default function ActionItemForm({ meetingId, onClose, editingItem }: Acti
   };
 
   const handleAddContact = (contact: Contact) => {
-    setFormData(prev => ({
-      ...prev,
-      contacts: [...prev.contacts, contact]
-    }));
+    setFormData({
+      contacts: [...formData.contacts, contact]
+    });
     setShowContactForm(false);
   };
 
   const handleUpdateContact = (contactId: string, updatedContact: Contact) => {
-    setFormData(prev => ({
-      ...prev,
-      contacts: prev.contacts.map(c => 
+    setFormData({
+      contacts: formData.contacts.map(c => 
         c.id === contactId ? updatedContact : c
       )
-    }));
+    });
   };
 
   const handleRemoveContact = (contactId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      contacts: prev.contacts.filter(c => c.id !== contactId)
-    }));
+    setFormData({
+      contacts: formData.contacts.filter(c => c.id !== contactId)
+    });
   };
 
   return (
