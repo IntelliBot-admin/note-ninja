@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import SignupForm from './components/auth/SignupForm';
@@ -13,6 +13,7 @@ import HeaderSlideLayout from './components/layout/HeaderSlideLayout';
 import { useAuthStore } from './store/authStore';
 import Settings from './pages/Settings';
 import '@stripe/stripe-js';
+import { checkBuildVersion } from './utils/versionChecker';
 
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -37,6 +38,10 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const { user } = useAuthStore();
+
+  useEffect(() => {
+    checkBuildVersion();
+  }, []);
 
   return (
     <BrowserRouter>
