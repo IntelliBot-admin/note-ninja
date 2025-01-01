@@ -11,6 +11,7 @@ import ShareDialog from '../share/ShareDialog';
 import { Share2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { transcribeAudioFromYoutube, uploadAudioFile } from '../../utils/audioHelpers';
+import NoteEditor from '../notes/NoteEditor';
 import { Speaker } from '../../types/transcription';
 import { useSubscription } from '../../hooks/useSubscription';
 
@@ -20,11 +21,15 @@ interface AudioUploaderProps {
   onAudioUrlUpdate: (url: string) => Promise<void>;
   onSummaryChange: (summary: string, type: MeetingType) => void;
   onSpeakersChange: (speakers: Speaker[]) => void;
+  onNotesChange?: (notes: string) => void;
+  youtubeLink?: string;
+  onYoutubeLinkChange?: (link: string) => void;
   initialTranscript?: string;
   initialAudioUrl?: string;
   initialSummary?: string;
   initialMeetingType?: MeetingType;
   initialSpeakers?: Speaker[];
+  personalNotes?: string;
 }
 
 
@@ -35,11 +40,15 @@ export default function AudioUploader({
   onAudioUrlUpdate,
   onSummaryChange,
   onSpeakersChange,
+  onNotesChange,
+  youtubeLink: initialYoutubeLink = '',
+  onYoutubeLinkChange,
   initialTranscript = '',
   initialAudioUrl = '',
   initialSummary = '',
   initialMeetingType = 'general',
-  initialSpeakers = []
+  initialSpeakers = [],
+  personalNotes: initialPersonalNotes = ''
 }: AudioUploaderProps) {
   const [file, setFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string>(initialAudioUrl);
@@ -52,15 +61,28 @@ export default function AudioUploader({
   const [showEmojis, setShowEmojis] = useState(true);
   const [showMindMap, setShowMindMap] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState('transcription');
   const [speakers, setSpeakers] = useState<Speaker[]>(initialSpeakers);
-  const [youtubeLink, setYoutubeLink] = useState<string>('');
+  const [youtubeLink, setYoutubeLink] = useState<string>(initialYoutubeLink);
   const [MAX_FILE_SIZE, setMAX_FILE_SIZE] = useState(5 * 1024 * 1024);
+  const [personalNotes, setPersonalNotes] = useState(initialPersonalNotes);
   const { planName } = useSubscription();
+  const [youtubeVideoId, setYoutubeVideoId] = useState<string | null>(null);
+
+  const extractYoutubeId = (url: string): string | null => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
 
   useEffect(() => {
     setMAX_FILE_SIZE(planName === 'Free' ? 5 * 1024 * 1024 : 150 * 1024 * 1024);
   }, [planName]);
 
+  useEffect(() => {
+    const videoId = youtubeLink ? extractYoutubeId(youtubeLink) : null;
+    setYoutubeVideoId(videoId);
+  }, [youtubeLink]);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const audioFile = acceptedFiles[0];
@@ -227,7 +249,11 @@ export default function AudioUploader({
               <input
                 type="text"
                 value={youtubeLink}
-                onChange={(e) => setYoutubeLink(e.target.value)}
+                onChange={(e) => { 
+                  const newValue = e.target.value;
+                  setYoutubeLink(newValue);
+                  onYoutubeLinkChange?.(newValue);
+                }}
                 placeholder="Paste YouTube link here"
                 className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
               />
@@ -246,6 +272,19 @@ export default function AudioUploader({
                 )}
               </button>
             </div>
+            {youtubeVideoId && (
+              <div className="mt-4 aspect-video w-full max-w-md mx-auto rounded-lg overflow-hidden shadow-sm">
+                <iframe
+                  width="100%"
+                  height="100%"
+                  src={`https://www.youtube.com/embed/${youtubeVideoId}`}
+                  title="YouTube video player"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                ></iframe>
+              </div>
+            )}
           </div>
         </div>
 
@@ -257,120 +296,159 @@ export default function AudioUploader({
       </div>
 
       {/* Rest of the component remains the same */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-gray-900">Transcription</h2>
-          <TranscriptDisplay
-            transcript={transcript}
-            speakers={speakers}
-            onUpdateSpeaker={(oldName, newName) => {
-              // Update local state first
-              const updatedSpeakers = speakers.map(speaker => ({
-                ...speaker,
-                speaker: speaker.speaker === oldName ? newName : speaker.speaker
-              }));
-              
-              // Update local state
-              setSpeakers(updatedSpeakers);
-              
-              // Notify parent component
-              onSpeakersChange(updatedSpeakers);
-            }}
-          />        </div>
-
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-900">AI Summary</h2>
-            <div className="flex items-center space-x-4">
+      <div className="space-y-4">
+        {/* Tabs Navigation */}
+        <div className="bg-white rounded-lg shadow-sm">
+          <nav className="flex" aria-label="Tabs">
+            {['Transcription', 'AI Summary', 'Personal Notes'].map((tab) => (
               <button
-                onClick={() => setShowEmojis(!showEmojis)}
-                className="text-sm text-gray-700 hover:text-indigo-600"
+                key={tab}
+                onClick={() => setActiveTab(tab.toLowerCase())}
+                className={`
+                  relative min-w-0 flex-1 overflow-hidden py-4 px-4 text-sm font-medium text-center
+                  hover:bg-gray-50 focus:z-10 focus:outline-none
+                  ${activeTab === tab.toLowerCase()
+                    ? 'text-indigo-600 bg-indigo-50 hover:bg-indigo-50'
+                    : 'text-gray-500 hover:text-gray-700'
+                  }
+                  ${tab === 'Transcription' ? 'rounded-l-lg' : ''}
+                  ${tab === 'Personal Notes' ? 'rounded-r-lg' : ''}
+                `}
               >
-                {showEmojis ? 'Hide Emojis' : 'Show Emojis'}
+                <span className="relative">
+                  {tab}
+                  {activeTab === tab.toLowerCase() && (
+                    <span className="absolute inset-x-0 bottom-0 h-0.5 bg-indigo-500" />
+                  )}
+                </span>
               </button>
-              <button
-                onClick={() => setShowMindMap(!showMindMap)}
-                className="text-sm text-gray-700 hover:text-indigo-600"
-              >
-                {showMindMap ? 'Show Text' : 'Show Mind Map'}
-              </button>
-              {(transcript || summary) && (
-                <button
-                  onClick={() => setShowShareDialog(true)}
-                  className="text-sm text-gray-700 hover:text-indigo-600 flex items-center"
-                >
-                  <Share2 className="w-4 h-4 mr-1" />
-                  Share
-                </button>
-              )}
-            </div>
-          </div>
+            ))}
+          </nav>
+        </div>
 
-          <div className="bg-white rounded-lg shadow-sm border p-4 h-[400px] flex flex-col">
-            {summary ? (
-              <>
-                <div className="mb-4 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 items-start sm:items-center">
-                  <select
-                    value={selectedMeetingType}
-                    onChange={(e) => {
-                      const newType = e.target.value as MeetingType;
-                      setSelectedMeetingType(newType);
-                      onSummaryChange(summary, newType);
-                    }}
-                    className="w-full sm:w-64 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  >
-                    {Object.entries(meetingTypes).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
+        {/* Tab Content */}
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          {activeTab === 'transcription' && (
+            <TranscriptDisplay
+              transcript={transcript}
+              speakers={speakers}
+              onUpdateSpeaker={(oldName, newName) => {
+                const updatedSpeakers = speakers.map(speaker => ({
+                  ...speaker,
+                  speaker: speaker.speaker === oldName ? newName : speaker.speaker
+                }));
+                setSpeakers(updatedSpeakers);
+                onSpeakersChange(updatedSpeakers);
+              }}
+            />
+          )}
+
+          {activeTab === 'ai summary' && (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center space-x-4">
                   <button
-                    onClick={handleGenerateSummary}
-                    className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-                    disabled={isGeneratingSummary}
+                    onClick={() => setShowEmojis(!showEmojis)}
+                    className="text-sm text-gray-700 hover:text-indigo-600"
                   >
-                    {isGeneratingSummary ? 'Generating...' : 'Regenerate'}
+                    {showEmojis ? 'Hide Emojis' : 'Show Emojis'}
+                  </button>
+                  <button
+                    onClick={() => setShowMindMap(!showMindMap)}
+                    className="text-sm text-gray-700 hover:text-indigo-600"
+                  >
+                    {showMindMap ? 'Show Text' : 'Show Mind Map'}
                   </button>
                 </div>
-                <div className="flex-1 overflow-y-auto">
-                  {showMindMap ? (
-                    <MindMap summary={summary} meetingType={selectedMeetingType} />
-                  ) : (
-                    <div className="prose prose-sm max-w-none">
-                      <div dangerouslySetInnerHTML={{ __html: summary }} />
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full">
-                <select
-                  value={selectedMeetingType}
-                  onChange={(e) => setSelectedMeetingType(e.target.value as MeetingType)}
-                  className="w-full sm:w-64 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mb-4"
-                >
-                  {Object.entries(meetingTypes).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-gray-500">
-                  {isProcessing ? 'Processing audio...' : transcript ? 'Click Generate AI Summary to continue' : 'Upload an MP3 file to get started'}
-                </p>
-                {transcript && !isProcessing && (
+                {(transcript || summary) && (
                   <button
-                    onClick={handleGenerateSummary}
-                    className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-                    disabled={isGeneratingSummary}
+                    onClick={() => setShowShareDialog(true)}
+                    className="text-sm text-gray-700 hover:text-indigo-600 flex items-center"
                   >
-                    {isGeneratingSummary ? 'Generating...' : 'Generate AI Summary'}
+                    <Share2 className="w-4 h-4 mr-1" />
+                    Share
                   </button>
                 )}
               </div>
-            )}
-          </div>
+
+              <div className="h-[500px] flex flex-col">
+                {summary ? (
+                  <>
+                    <div className="mb-4 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 items-start sm:items-center">
+                      <select
+                        value={selectedMeetingType}
+                        onChange={(e) => {
+                          const newType = e.target.value as MeetingType;
+                          setSelectedMeetingType(newType);
+                          onSummaryChange(summary, newType);
+                        }}
+                        className="w-full sm:w-64 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      >
+                        {Object.entries(meetingTypes).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={handleGenerateSummary}
+                        className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                        disabled={isGeneratingSummary}
+                      >
+                        {isGeneratingSummary ? 'Generating...' : 'Regenerate'}
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                      {showMindMap ? (
+                        <MindMap summary={summary} meetingType={selectedMeetingType} />
+                      ) : (
+                        <div className="prose prose-sm max-w-none">
+                          <div dangerouslySetInnerHTML={{ __html: summary }} />
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full">
+                    <select
+                      value={selectedMeetingType}
+                      onChange={(e) => setSelectedMeetingType(e.target.value as MeetingType)}
+                      className="w-full sm:w-64 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mb-4"
+                    >
+                      {Object.entries(meetingTypes).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-gray-500">
+                      {isProcessing ? 'Processing audio...' : transcript ? 'Click Generate AI Summary to continue' : 'Upload an MP3 file to get started'}
+                    </p>
+                    {transcript && !isProcessing && (
+                      <button
+                        onClick={handleGenerateSummary}
+                        className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                        disabled={isGeneratingSummary}
+                      >
+                        {isGeneratingSummary ? 'Generating...' : 'Generate AI Summary'}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'personal notes' && (
+            <NoteEditor
+              content={personalNotes}
+              onChange={(notes) => {
+                setPersonalNotes(notes);
+                onNotesChange?.(notes);
+              }}
+              autoFocus={false}
+            />
+          )}
         </div>
       </div>
 

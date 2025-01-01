@@ -17,7 +17,7 @@ import { Speaker } from '../types/transcription';
 
 const meetingTools = [
   { icon: Mic, label: 'Record', shortLabel: 'Record', action: 'record' },
-  { icon: Upload, label: 'MP3 Upload', shortLabel: 'Upload', action: 'upload' },
+  { icon: Upload, label: 'Media Uploader', shortLabel: 'Upload', action: 'upload' },
   { icon: Link2, label: 'Files & URLs', shortLabel: 'Files', action: 'files' },
   { icon: CheckSquare, label: 'Action Items', shortLabel: 'Tasks', action: 'actions' }
 ];
@@ -36,6 +36,7 @@ export default function MeetingDetail() {
   const [selectedCategory, setSelectedCategory] = useState('');
   // const [isRecording, setIsRecording] = useState(false);
   const { isRecording, setIsRecording } = useRecordingStore();
+  const [youtubeLink, setYoutubeLink] = useState<string>('');
 
   // Record Meeting state
   const [recordTranscript, setRecordTranscript] = useState('');
@@ -76,6 +77,7 @@ export default function MeetingDetail() {
           setUploadSummary(meetingData.uploadSummary || '');
           setUploadMeetingType(meetingData.uploadMeetingType || 'general');
           setUploadSpeakers(meetingData.uploadSpeakers || []);
+          setYoutubeLink(meetingData.youtubeLink || '');
         } else {
           navigate('/');
         }
@@ -151,13 +153,13 @@ export default function MeetingDetail() {
         return (
           <AudioRecorder
             meetingId={id!}
-            onTranscriptChange={(transcript) => 
+            onTranscriptChange={(transcript) =>
               updateMeeting(id!, { transcription: transcript, source: 'record' })}
-            onAudioUrlUpdate={(url) => 
+            onAudioUrlUpdate={(url) =>
               updateMeeting(id!, { audioUrl: url, source: 'record' })}
-            onSummaryChange={(summary, type) => 
+            onSummaryChange={(summary, type) =>
               updateMeeting(id!, { summary, meetingType: type, source: 'record' })}
-            onSpeakersChange={(speakers) => 
+            onSpeakersChange={(speakers) =>
               updateMeeting(id!, { speakers, source: 'record' })}
             onRecordingStateChange={setIsRecording}
             onNotesChange={handleNotesChange}
@@ -173,14 +175,19 @@ export default function MeetingDetail() {
         return (
           <AudioUploader
             meetingId={id!}
-            onTranscriptChange={(transcript) => 
+            onTranscriptChange={(transcript) =>
               updateMeeting(id!, { transcription: transcript, source: 'upload' })}
-            onAudioUrlUpdate={(url) => 
+            onAudioUrlUpdate={(url) =>
               updateMeeting(id!, { audioUrl: url, source: 'upload' })}
-            onSummaryChange={(summary, type) => 
+            onSummaryChange={(summary, type) =>
               updateMeeting(id!, { summary, meetingType: type, source: 'upload' })}
-            onSpeakersChange={(speakers) => 
+            onSpeakersChange={(speakers) =>
               updateMeeting(id!, { speakers, source: 'upload' })}
+            youtubeLink={youtubeLink}
+            onYoutubeLinkChange={(link) => {
+              setYoutubeLink(link);
+              updateMeeting(id!, { youtubeLink: link });
+            }}
             initialTranscript={uploadTranscript}
             initialAudioUrl={uploadAudioUrl}
             initialSummary={uploadSummary}
@@ -305,7 +312,7 @@ export default function MeetingDetail() {
             ) : (
               <div className="flex items-center space-x-2">
                 {selectedCategory ? (
-                  <div 
+                  <div
                     className="inline-flex items-center px-2 py-1 rounded-full text-sm font-medium"
                     style={{
                       backgroundColor: `${getCategoryColor(selectedCategory)}20`,
@@ -347,8 +354,8 @@ export default function MeetingDetail() {
                       ${activeTab === tool.action
                         ? 'bg-indigo-100 text-indigo-700'
                         : isDisabled
-                        ? 'text-gray-400 cursor-not-allowed'
-                        : 'text-gray-600 hover:bg-gray-200'
+                          ? 'text-gray-400 cursor-not-allowed'
+                          : 'text-gray-600 hover:bg-gray-200'
                       }
                     `}
                     title={isDisabled ? 'Stop recording to switch tabs' : tool.label}

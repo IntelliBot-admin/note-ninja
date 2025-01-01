@@ -49,6 +49,7 @@ export interface Meeting {
   uploadAudioUrl?: string;
   uploadSummary?: string;
   uploadMeetingType?: MeetingType;
+ youtubeLink?: string;
 }
 
 export const meetingTypes: Record<MeetingType, string> = {

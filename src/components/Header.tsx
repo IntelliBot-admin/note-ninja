@@ -21,7 +21,12 @@ export default function Header() {
       toast.error('Please stop recording before navigating');
       return;
     }
-    navigate(path);
+    // When navigating to calendar view from Tasks icon, add the kanban parameter
+    if (path === '/calendar') {
+      navigate('/calendar?view=kanban');
+    } else {
+      navigate(path);
+    }
   };
 
   const handleSignOut = () => {

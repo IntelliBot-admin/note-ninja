@@ -12,7 +12,6 @@ import CalendarView from '../components/calendar/CalendarView';
 import CategoryManager from '../components/categories/CategoryManager';
 import toast from 'react-hot-toast';
 import { Meeting } from '../types/meeting';
-import { checkBuildVersion } from '../utils/versionChecker';
 
 const postItColors = [
   'bg-yellow-100',

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-import { FileText, CheckSquare, Calendar } from 'lucide-react';
+import { FileText, CheckSquare } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface UserStatsProps {
   userId: string;
@@ -9,6 +10,7 @@ interface UserStatsProps {
 }
 
 export default function UserStats({ userId, isSidebarLayout = false }: UserStatsProps) {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalMeetings: 0,
     totalActionItems: 0,
@@ -58,41 +60,54 @@ export default function UserStats({ userId, isSidebarLayout = false }: UserStats
 
     fetchStats();
   }, [userId]);
+
   if (isSidebarLayout) {
     return (
       <div className="flex-1 space-y-2 mb-8">
-        <div className="flex items-center justify-between p-3 rounded-lg bg-white/50">
+        <button
+          onClick={() => navigate('/')}
+          className="flex items-center justify-between w-full p-3 rounded-lg bg-white/50 hover:bg-indigo-50 transition-colors"
+        >
           <div className="flex items-center space-x-2">
             <FileText className="w-4 h-4 text-indigo-500" />
             <span className="text-sm text-gray-600">{stats.totalMeetings} Meetings</span>
-            {stats.totalMinutes > 0 && (
-              <span className="text-xs text-gray-400">({Math.round(stats.totalMinutes)} mins)</span>
-            )}
           </div>
-        </div>
-        <div className="flex items-center justify-between p-3 rounded-lg bg-white/50">
+          {stats.totalMinutes > 0 && (
+            <span className="text-xs text-gray-400">({Math.round(stats.totalMinutes)} mins)</span>
+          )}
+        </button>
+        <button
+          onClick={() => navigate('/calendar?view=kanban')}
+          className="flex items-center justify-between w-full p-3 rounded-lg bg-white/50 hover:bg-indigo-50 transition-colors"
+        >
           <div className="flex items-center space-x-2">
             <CheckSquare className="w-4 h-4 text-green-500" />
             <span className="text-sm text-gray-600">{stats.completedActionItems}/{stats.totalActionItems} Tasks</span>
           </div>
-        </div>
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="hidden lg:flex items-center space-x-6 px-4 py-1.5 bg-gray-50/50 rounded-full border border-gray-200/50">
-      <div className="flex items-center space-x-1.5 text-xs text-gray-600">
-        <FileText className="w-3.5 h-3.5 text-indigo-500" />
-        <span>{stats.totalMeetings} Meetings</span>
+    <div className="flex items-center space-x-4">
+      <button
+        onClick={() => navigate('/')}
+        className="flex items-center space-x-2 px-3 py-1.5 bg-white rounded-full border border-gray-200 hover:bg-indigo-50 transition-colors"
+      >
+        <FileText className="w-4 h-4 text-indigo-500" />
+        <span className="text-sm text-gray-600">{stats.totalMeetings} Meetings</span>
         {stats.totalMinutes > 0 && (
-          <span className="text-gray-400">({Math.round(stats.totalMinutes)} mins)</span>
+          <span className="text-xs text-gray-400">({Math.round(stats.totalMinutes)} mins)</span>
         )}
-      </div>
-      <div className="flex items-center space-x-1.5 text-xs text-gray-600">
-        <CheckSquare className="w-3.5 h-3.5 text-green-500" />
-        <span>{stats.completedActionItems}/{stats.totalActionItems} Tasks</span>
-      </div>
+      </button>
+      <button
+        onClick={() => navigate('/calendar?view=kanban')}
+        className="flex items-center space-x-2 px-3 py-1.5 bg-white rounded-full border border-gray-200 hover:bg-indigo-50 transition-colors"
+      >
+        <CheckSquare className="w-4 h-4 text-green-500" />
+        <span className="text-sm text-gray-600">{stats.completedActionItems}/{stats.totalActionItems} Tasks</span>
+      </button>
     </div>
   );
 }

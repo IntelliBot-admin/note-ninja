@@ -18,7 +18,11 @@ export default function CalendarView() {
   const [items, setItems] = useState<ActionItem[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<ViewMode>('calendar');
+  const [view, setView] = useState<ViewMode>(() => {
+    // Get the view from URL parameters or default to calendar
+    const params = new URLSearchParams(window.location.search);
+    return (params.get('view') as ViewMode) || 'calendar';
+  });
   const { user } = useAuthStore();
   const { toggleComplete } = useActionItemStore();
 
