@@ -5,7 +5,7 @@ interface Quote {
 }
 
 const CACHE_KEY = 'daily-quote';
-const API_URL = 'https://api.quotable.io/quotes/random';
+const API_URL = 'https://zenquotes.io/api/random';
 
 const FALLBACK_QUOTE: Quote = {
   content: 'The best way to predict the future is to create it.',
@@ -42,16 +42,16 @@ export async function getQuote(): Promise<Quote> {
     }
 
     const data = await response.json();
-    // API returns an array with one quote
+    // ZenQuotes API returns an array with one quote
     const quoteData = Array.isArray(data) ? data[0] : data;
     
-    if (!quoteData?.content || !quoteData?.author) {
+    if (!quoteData?.q || !quoteData?.a) {
       throw new Error('Invalid quote data received');
     }
     
     const newQuote = {
-      content: quoteData.content,
-      author: quoteData.author,
+      content: quoteData.q,
+      author: quoteData.a,
       timestamp: Date.now()
     };
     
