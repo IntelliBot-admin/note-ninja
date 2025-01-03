@@ -21,6 +21,7 @@ interface ActionItemStore {
   deleteActionItem: (itemId: string) => Promise<void>;
   toggleComplete: (itemId: string, currentStatus: string) => Promise<void>;
   formData: {
+    meetingId: string;
     title: string;
     description: string;
     priority: Priority;
@@ -110,6 +111,7 @@ export const useActionItemStore = create<ActionItemStore>((set) => ({
   },
 
   formData: {
+    meetingId: '',
     title: '',
     description: '',
     priority: 'medium',
@@ -124,6 +126,7 @@ export const useActionItemStore = create<ActionItemStore>((set) => ({
 
   resetFormData: () => set((state) => ({
     formData: {
+      meetingId: '',
       title: '',
       description: '',
       priority: 'medium',

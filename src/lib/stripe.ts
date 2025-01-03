@@ -6,6 +6,11 @@ import { toast } from 'react-hot-toast';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
+export const planMap = {
+   'entry': 'prod_RVls54uz7O7MQO',
+   'pro': 'prod_RQVH6FHldRKLAX',
+   'enterprise': 'enterprise_plan_id'
+}
 
 // Type definitions
 export interface StripePrice {
@@ -129,7 +134,7 @@ export const createCheckoutSession = async (
       }
 
       // Handle existing subscribers
-      if (userData.plan !== 'free' && userData.subscriptionId) {
+      if (userData.subscriptionId) {
          const result = await serverPost('/update-subscription', {
             customerId: userData.customerId,
             newPriceId: priceId,

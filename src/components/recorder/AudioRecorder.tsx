@@ -69,9 +69,10 @@ export default function AudioRecorder({
   const [speakers, setSpeakers] = useState<Speaker[]>(initialSpeakers);
   const [selectedMeetingType, setSelectedMeetingType] = useState<MeetingType>(initialMeetingType);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
-  const [showEmojis, setShowEmojis] = useState(false);
+  const [showEmojis, setShowEmojis] = useState(true);
   const [showMindMap, setShowMindMap] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [mobileView, setMobileView] = useState<'summary' | 'actions'>('summary');
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState('transcription');
   const [notes, setNotes] = useState(initialNotes);
@@ -462,12 +463,12 @@ export default function AudioRecorder({
                   </button>
                 ))}
               </div>
-              <div className="flex items-center space-x-4">
+              <div className="flex flex-wrap items-center gap-2">
                 <select
                   value={selectedLanguage}
                   onChange={handleLanguageChange}
                   disabled={isTranslating || !summary}
-                  className="text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  className="text-xs sm:text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 max-w-[120px] sm:max-w-none"
                 >
                   <option value="">Original (English)</option>
                   {Object.entries(SUPPORTED_LANGUAGES).map(([code, name]) => (
@@ -479,10 +480,10 @@ export default function AudioRecorder({
                 {(transcript || summary) && (
                   <button
                     onClick={() => setShowShareDialog(true)}
-                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                    className="inline-flex items-center px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 whitespace-nowrap min-w-0"
                   >
                     <Share2 className="w-4 h-4 mr-1.5" />
-                    Share
+                    <span className="hidden sm:inline">Share</span>
                   </button>
                 )}
               </div>
@@ -522,15 +523,83 @@ export default function AudioRecorder({
                       </div>
                     ) : showMindMap ? (
                       <MindMap summary={translatedSummary || summary} meetingType={selectedMeetingType} />
+                    ) : !showMindMap && window.innerWidth <= 640 ? (
+                      <div className="flex flex-col h-[calc(500px-4rem)]">
+                        <div className="flex justify-center space-x-2 mb-4">
+                          <button
+                            onClick={() => setMobileView('summary')}
+                            className={`px-4 py-2 text-sm font-medium rounded-md ${
+                              mobileView === 'summary'
+                                ? 'bg-indigo-100 text-indigo-700'
+                                : 'bg-gray-100 text-gray-600'
+                            }`}
+                          >
+                            Summary
+                          </button>
+                          <button
+                            onClick={() => setMobileView('actions')}
+                            className={`px-4 py-2 text-sm font-medium rounded-md ${
+                              mobileView === 'actions'
+                                ? 'bg-indigo-100 text-indigo-700'
+                                : 'bg-gray-100 text-gray-600'
+                            }`}
+                          >
+                            Action Items
+                          </button>
+                        </div>
+                        
+                        {mobileView === 'summary' ? (
+                          <div className="flex-1 overflow-y-auto px-4">
+                            <div className="prose prose-sm max-w-none">
+                              <div dangerouslySetInnerHTML={{ __html: translatedSummary || summary }} />
+                            </div>
+                          </div>
+                        ) : (
+                          actionItems && actionItems.length > 0 && (
+                            <div className="flex-1 overflow-y-auto px-4">
+                              <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center sticky top-0 bg-white py-2">
+                                <span className="mr-2">📋</span> Recommended Action Items
+                              </h3>
+                              <div className="space-y-2">
+                                {actionItems.map((item, index) => (
+                                  <div 
+                                    key={index} 
+                                    className="bg-gray-50 p-3 rounded-md border border-gray-200 hover:border-indigo-200 transition-colors text-sm group"
+                                  >
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex-1">
+                                        <h4 className="font-medium text-gray-900 flex items-center text-sm">
+                                          <span className="mr-2">•</span>
+                                          {item.title}
+                                        </h4>
+                                        <p className="text-gray-600 mt-0.5 ml-4 text-xs leading-relaxed">
+                                          {item.description}
+                                        </p>
+                                      </div>
+                                      <button 
+                                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 rounded-md"
+                                        title="Add Action Item"
+                                        onClick={() => addToActionItemModal(item)}
+                                      >
+                                        <Plus className="w-4 h-4 text-gray-600" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
                     ) : (
-                      <div className="flex gap-6 h-[calc(500px-4rem)]">
+                      <div className="hidden sm:flex gap-6 h-[calc(500px-4rem)]">
                         <div className="flex-1 overflow-y-auto pr-6">
                           <div className="prose prose-sm max-w-none">
                             <div dangerouslySetInnerHTML={{ __html: translatedSummary || summary }} />
                           </div>
                         </div>
                         
-                        {!showMindMap && actionItems && actionItems.length > 0 && (
+                        {actionItems && actionItems.length > 0 && (
                           <div className="w-1/3 border-l pl-6 flex flex-col">
                             <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center sticky top-0 bg-white py-2">
                               <span className="mr-2">📋</span> Recommended Action Items

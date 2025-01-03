@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/authStore';
+import { planMap } from '../lib/stripe';
 
 export interface Subscription {
    userId: string;
    stripeSubscriptionId: string;
-   status: 'incomplete' | 'active' | 'canceled';
+   status: 'incomplete' | 'active' | 'canceled' | 'trialing';
    planId: string;
    currentPeriodStart: Date;
    currentPeriodEnd: Date;
@@ -32,7 +33,7 @@ export function useSubscription() {
       const q = query(
          subscriptionsRef,
          where('userId', '==', user.uid),
-         where('status', '==', 'active')
+         where('status', 'in', ['active', 'trialing'])
       );
 
       const unsubscribe = onSnapshot(q,
@@ -68,8 +69,11 @@ export function useSubscription() {
    return {
       subscription,
       loading,
-      isActive: subscription?.status === 'active',
-      // You might want to map planId to a plan name, or store plan name in Firestore
-      planName: subscription ? 'Premium' : 'Free',
+      isActive: subscription?.status === 'active' || subscription?.status === 'trialing',
+      isTrialing: subscription?.status === 'trialing',
+      trialEndsAt: subscription?.status === 'trialing' ? subscription?.currentPeriodEnd : null,
+      planName: subscription ? 
+         (Object.entries(planMap).find(([_, id]) => id === subscription.planId)?.[0] || 'Unknown') : 
+         'Free',
    };
 }

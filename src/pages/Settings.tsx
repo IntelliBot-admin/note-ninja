@@ -113,6 +113,8 @@ export default function Settings() {
       }
    };
 
+   
+
    const handleDeleteAccount = async () => {
       if (deleteConfirmation !== user?.email) {
          toast.error('Please enter your email correctly to confirm deletion');
@@ -163,13 +165,13 @@ export default function Settings() {
    const DowngradeModal = () => (
       <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
          <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Confirm Downgrade to Free Plan</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Cancel Free Trial</h3>
             <p className="text-sm text-gray-500 mb-4">
-               Are you sure you want to downgrade to the free plan? You will:
+               Are you sure you want to cancel your free trial? Please note:
             </p>
             <ul className="list-disc list-inside text-sm text-gray-500 mb-6">
-               <li>Maintain access to premium features until {currentSubscription?.currentPeriodEnd ? new Date(currentSubscription.currentPeriodEnd).toLocaleDateString() : 'the end of your billing period'}</li>
-               <li>Lose access to premium features after your billing period ends</li>
+               <li>Your access to premium features will end immediately</li>
+               <li>You can upgrade again at any time</li>
             </ul>
             <div className="flex justify-end space-x-4">
                <button
@@ -177,7 +179,7 @@ export default function Settings() {
                   disabled={isDowngrading}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md disabled:opacity-50"
                >
-                  Cancel
+                  Keep Trial
                </button>
                <button
                   onClick={async () => {
@@ -185,11 +187,11 @@ export default function Settings() {
                         try {
                            setIsDowngrading(true);
                            await downgradeToFreePlan(user.uid);
-                           toast.success('Successfully downgraded to free plan');
+                           toast.success('Trial cancelled successfully');
                            setShowDowngradeModal(false);
                         } catch (error) {
-                           console.error('Error downgrading plan:', error);
-                           toast.error('Failed to downgrade plan');
+                           console.error('Error cancelling trial:', error);
+                           toast.error('Failed to cancel trial');
                         } finally {
                            setIsDowngrading(false);
                         }
@@ -220,10 +222,10 @@ export default function Settings() {
                               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                            />
                         </svg>
-                        Downgrading...
+                        Cancelling...
                      </>
                   ) : (
-                     'Confirm Downgrade'
+                     'Cancel Trial'
                   )}
                </button>
             </div>
@@ -294,14 +296,20 @@ export default function Settings() {
                                  {currentSubscription && currentPlanDetails ? (
                                     <>
                                        <p className="text-sm font-medium text-gray-900">
-                                          You are on {currentPlanDetails.product.name}
+                                          You are on {currentPlanDetails.product.name} Plan
+                                          {/* {currentSubscription.status === 'trialing' && ' (Trial)'} */}
                                        </p>
                                        <p className="text-sm text-gray-500">
-                                          Paying ${(currentPlanDetails.unit_amount / 100).toFixed(2)} per {currentPlanDetails.recurring.interval}
+                                          {currentSubscription.status === 'trialing' 
+                                             ? 'Free trial until ' + new Date(currentSubscription.currentPeriodEnd).toLocaleDateString()
+                                             : `Paying $${(currentPlanDetails.unit_amount / 100).toFixed(2)} per ${currentPlanDetails.recurring.interval}`
+                                          }
                                        </p>
-                                       <p className="text-xs text-gray-400 mt-1">
-                                          Next billing date: {new Date(currentSubscription.currentPeriodEnd).toLocaleDateString()}
-                                       </p>
+                                       {currentSubscription.status !== 'trialing' && (
+                                          <p className="text-xs text-gray-400 mt-1">
+                                             Next billing date: {new Date(currentSubscription.currentPeriodEnd).toLocaleDateString()}
+                                          </p>
+                                       )}
                                     </>
                                  ) : (
                                     <>
@@ -359,7 +367,7 @@ export default function Settings() {
                            <h3 className="text-base font-medium text-gray-900 mb-4">Available Plans</h3>
                            <div className="grid gap-4 sm:grid-cols-2">
                               {/* Free Plan Card */}
-                              <div className="border rounded-lg p-4 hover:border-indigo-500 transition-colors">
+                              {/* <div className="border rounded-lg p-4 hover:border-indigo-500 transition-colors">
                                  <div className="flex justify-between items-start">
                                     <div>
                                        <h4 className="text-lg font-medium text-gray-900">Free Plan</h4>
@@ -380,7 +388,7 @@ export default function Settings() {
                                  >
                                     {!currentSubscription ? 'Current Plan' : 'Downgrade to Free Plan'}
                                  </button>
-                              </div>
+                              </div> */}
 
                               {/* Existing Paid Plans */}
                               {products.map((product) => (
@@ -397,13 +405,17 @@ export default function Settings() {
 
                                     <button
                                        type="button"
-                                       onClick={() => handleSubscribe(product.id)}
+                                       onClick={() => currentSubscription?.status === 'trialing' ? setShowDowngradeModal(true) : handleSubscribe(product.id)}
                                        className={`mt-4 w-full inline-flex items-center justify-center px-4 py-2 border rounded-md shadow-sm text-sm font-medium ${
                                           currentSubscription?.planId === product.id
-                                             ? 'bg-gray-100 text-gray-800 border-gray-300'
+                                             ? currentSubscription.status === 'trialing'
+                                                ? 'bg-red-600 text-white hover:bg-red-700 border-transparent'
+                                                : 'bg-gray-100 text-gray-800 border-gray-300'
                                              : 'border-transparent text-white bg-indigo-600 hover:bg-indigo-700'
-                                       } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
-                                       disabled={processingPlanId === product.id || currentSubscription?.planId === product.id}
+                                       } focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                                          currentSubscription?.status === 'trialing' ? 'focus:ring-red-500' : 'focus:ring-indigo-500'
+                                       }`}
+                                       disabled={processingPlanId === product.id}
                                     >
                                        {processingPlanId === product.id ? (
                                           <>
@@ -414,7 +426,9 @@ export default function Settings() {
                                              Processing...
                                           </>
                                        ) : currentSubscription?.planId === product.id
-                                          ? 'Current Plan'
+                                          ? currentSubscription.status === 'trialing'
+                                             ? 'Cancel Trial'
+                                             : 'Current Plan'
                                           : currentSubscription
                                              ? `Switch to ${product.product.name}`
                                              : `Subscribe to ${product.product.name}`

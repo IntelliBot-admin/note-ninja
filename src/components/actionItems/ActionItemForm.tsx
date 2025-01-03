@@ -16,7 +16,7 @@ interface ActionItemFormProps {
 
 export default function ActionItemForm({ meetingId, onClose, editingItem }: ActionItemFormProps) {
   const { user } = useAuthStore();
-  const { addActionItem, updateActionItem, formData, setFormData, resetFormData } = useActionItemStore();
+  const { addActionItem, updateActionItem, formData, setFormData } = useActionItemStore();
   const [loading, setLoading] = useState(false);
   const [showContactForm, setShowContactForm] = useState(false);
 
@@ -27,6 +27,7 @@ export default function ActionItemForm({ meetingId, onClose, editingItem }: Acti
         : new Date(editingItem.dueDate);
 
       setFormData({
+        meetingId: editingItem.meetingId,
         title: editingItem.title,
         description: editingItem.description || '',
         priority: editingItem.priority,
@@ -34,13 +35,30 @@ export default function ActionItemForm({ meetingId, onClose, editingItem }: Acti
         status: editingItem.status,
         contacts: editingItem.contacts || []
       });
-    } 
-  }, [editingItem, setFormData, resetFormData]);
+    } else {
+      // Reset form data when no editing item is provided
+      setFormData({
+        meetingId,
+        title: '',
+        description: '',
+        priority: 'medium',
+        dueDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+        status: 'pending',
+        contacts: []
+      });
+    }
+  }, [editingItem, setFormData, meetingId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
       toast.error('You must be logged in to create action items');
+      return;
+    }
+
+    if (!formData.meetingId) {
+      console.error('No meetingId provided');
+      toast.error('Missing meeting reference');
       return;
     }
 
@@ -57,7 +75,7 @@ export default function ActionItemForm({ meetingId, onClose, editingItem }: Acti
         priority: formData.priority,
         dueDate: new Date(formData.dueDate),
         status: formData.status,
-        meetingId,
+        meetingId: formData.meetingId,
         userId: user.uid,
         contacts: formData.contacts
       };

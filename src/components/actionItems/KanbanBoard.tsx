@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Plus, X, Edit2 } from 'lucide-react';
+import { useAuthStore } from '../../store/authStore';
 import { ActionItem } from '../../types/actionItem';
 import { useKanbanStore, KanbanColumn } from '../../store/kanbanStore';
-import { useAuthStore } from '../../store/authStore';
+import { useActionItemStore } from '../../store/actionItemStore';
+import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface Column {
   id: string;
@@ -19,6 +22,7 @@ interface KanbanBoardProps {
 }
 
 export default function KanbanBoard({ items, onStatusChange, onEdit }: KanbanBoardProps) {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const { columns: savedColumns, fetchColumns, addColumn, removeColumn } = useKanbanStore();
   const [columns, setColumns] = useState<Column[]>([
@@ -28,6 +32,9 @@ export default function KanbanBoard({ items, onStatusChange, onEdit }: KanbanBoa
   ]);
   const [newColumnTitle, setNewColumnTitle] = useState('');
   const [showNewColumnForm, setShowNewColumnForm] = useState(false);
+  const { setShowForm, setFormData } = useActionItemStore();
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Partial<ActionItem>>({});
 
   useEffect(() => {
     if (user) {
@@ -163,6 +170,21 @@ export default function KanbanBoard({ items, onStatusChange, onEdit }: KanbanBoa
       toast.error('Failed to remove column');
     }
   };
+const handleEditClick = (item: ActionItem) => {
+  setEditingItemId(item.id);
+  setEditForm(item);
+};
+
+const handleSaveEdit = () => {
+  if (editForm) {
+    onEdit(editForm as ActionItem);
+    console.log(editForm);
+    // setFormData(editForm);
+    setEditingItemId(null);
+    setEditForm({});
+  }
+};
+
 
   return (
     <div className="h-full overflow-x-auto">
@@ -212,27 +234,74 @@ export default function KanbanBoard({ items, onStatusChange, onEdit }: KanbanBoa
                               snapshot.isDragging ? 'shadow-lg' : ''
                             }`}
                           >
-                            <div className="flex justify-between items-start">
-                              <h4 className="text-sm font-medium text-gray-900">
-                                {item.title}
-                              </h4>
-                              <button
-                                onClick={() => onEdit(item)}
-                                className="text-gray-400 hover:text-indigo-600"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                            {item.description && (
-                              <p className="mt-1 text-xs text-gray-500 line-clamp-2">
-                                {item.description}
-                              </p>
+                            {editingItemId === item.id ? (
+                              <div className="space-y-2">
+                                <input
+                                  type="text"
+                                  value={editForm.title || ''}
+                                  onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
+                                  className="w-full px-2 py-1 text-sm border rounded"
+                                />
+                                <textarea
+                                  value={editForm.description || ''}
+                                  onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                                  className="w-full px-2 py-1 text-sm border rounded"
+                                />
+                                <input
+                                  type="datetime-local"
+                                  value={format(
+                                    editForm.dueDate instanceof Date ? editForm.dueDate : new Date(editForm.dueDate || ''),
+                                    "yyyy-MM-dd'T'HH:mm"
+                                  )}
+                                  onChange={(e) => setEditForm(prev => ({ ...prev, dueDate: new Date(e.target.value) }))}
+                                  className="w-full px-2 py-1 text-sm border rounded"
+                                />
+                                <div className="flex justify-end space-x-2 mt-2">
+                                  <button
+                                    onClick={() => {
+                                      setEditingItemId(null);
+                                      setEditForm({});
+                                    }}
+                                    className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700 border rounded"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    onClick={handleSaveEdit}
+                                    className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                                  >
+                                    Save
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div>
+                                <div className="flex justify-between items-start">
+                                  <h4 
+                                    onClick={() => navigate(`/meeting/${item.meetingId}`)}
+                                    className="text-sm font-medium text-gray-900 hover:text-indigo-600 cursor-pointer"
+                                  >
+                                    {item.title}
+                                  </h4>
+                                  <button
+                                    onClick={() => handleEditClick(item)}
+                                    className="text-gray-400 hover:text-indigo-600"
+                                  >
+                                    <Edit2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                                {item.description && (
+                                  <p className="mt-1 text-xs text-gray-500 line-clamp-2">
+                                    {item.description}
+                                  </p>
+                                )}
+                                <div className="mt-2 flex items-center text-xs text-gray-500">
+                                  <span>
+                                    Due: {new Date(item.dueDate).toLocaleDateString()}
+                                  </span>
+                                </div>
+                              </div>
                             )}
-                            <div className="mt-2 flex items-center text-xs text-gray-500">
-                              <span>
-                                Due: {new Date(item.dueDate).toLocaleDateString()}
-                              </span>
-                            </div>
                           </div>
                         )}
                       </Draggable>

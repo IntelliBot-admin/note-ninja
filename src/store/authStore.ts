@@ -16,6 +16,7 @@ import { DEFAULT_CATEGORIES } from '../types/category';
 import { SignupFormData } from '../types/auth';
 import toast from 'react-hot-toast';
 import { serverPost } from '../utils/api';
+import { createCheckoutSession, planMap } from '../lib/stripe';
 
 interface AuthState {
   user: User | null;
@@ -60,13 +61,27 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signUp: async (email, password, additionalData) => {
     try {
+      // Create Firebase user first
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Create user document first
+      // Create Stripe customer before user document
+      let customerId = null;
+      try {
+        const response = await serverPost('/create-customer', {
+          email: user.email,
+          uid: user.uid
+        });
+        customerId = response?.customerId;
+      } catch (error) {
+        console.error('Failed to create Stripe customer:', error);
+        toast.error('Account created, but some features may be limited. Please try again later.');
+      }
+
+      // Create user document with Stripe customer ID
       const userData = {
         email: user.email,
-        customerId: null, // Will be updated after Stripe customer creation
+        customerId, // Include Stripe customer ID from the start
         plan: 'free',
         subscriptionId: null,
         firstName: additionalData?.firstName || '',
@@ -82,24 +97,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       // Initialize categories
       await initializeUserCategories(user.uid);
 
-      try {
-        // Create customer in stripe
-        const response = await serverPost('/create-customer', {
-          email: user.email,
-          uid: user.uid
-        });
-        
-        if (response?.customerId) {
-          // Update user document with Stripe customer ID
-          await setDoc(doc(db, 'users', user.uid), {
-            customerId: response.customerId
-          }, { merge: true });
-        }
-      } catch (error) {
-        console.error('Failed to create Stripe customer:', error);
-        // Don't throw error - allow signup to continue
-        toast.error('Account created, but some features may be limited. Please try again later.');
-      }
+      // await createCheckoutSession(user.uid, import.meta.env.VITE_STRIPE_ENTRY_PRICE_ID);
     } catch (error: any) {
       console.error('Signup error:', error);
       throw new Error(getAuthErrorMessage(error.code));
