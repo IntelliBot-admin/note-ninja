@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/authStore';
-import { fetchCalendarEvents } from '../utils/calendarAuth';
 import { ActionItem } from '../types/actionItem';
+import { format } from 'date-fns';
 import ActionItemCalendarView from '../components/actionItems/ActionItemCalendarView';
 import TimelineView from '../components/actionItems/TimelineView';
 import KanbanBoard from '../components/actionItems/KanbanBoard';
@@ -24,7 +24,7 @@ export default function CalendarView() {
     return (params.get('view') as ViewMode) || 'calendar';
   });
   const { user } = useAuthStore();
-  const { toggleComplete } = useActionItemStore();
+  const { toggleComplete, setShowForm, setFormData } = useActionItemStore();
 
   // Helper function to safely parse any date format
   const parseDateSafely = (dateValue: any): Date => {
@@ -83,18 +83,6 @@ export default function CalendarView() {
   useEffect(() => {
     if (!user) return;
 
-    // Fetch calendar events
-    const loadCalendarEvents = async () => {
-      try {
-        const events = await fetchCalendarEvents(user.uid);
-        setCalendarEvents(events);
-      } catch (error) {
-        console.error('Error loading calendar events:', error);
-        toast.error('Failed to load calendar events');
-      }
-    };
-
-    loadCalendarEvents();
 
     const q = query(
       collection(db, 'actionItems'),
@@ -150,9 +138,23 @@ export default function CalendarView() {
     }
   };
 
-  const handleEdit = (item: ActionItem) => {
-    window.location.href = `/meeting/${item.meetingId}?action=edit&itemId=${item.id}`;
-  };
+const handleEdit = (item: ActionItem) => {
+  setShowForm(true);
+  setFormData({
+    meetingId: item.meetingId, // Added meetingId
+    title: item.title,
+    description: item.description || '',
+    priority: item.priority,
+    dueDate: format(
+      item.dueDate instanceof Date ? item.dueDate : new Date(item.dueDate), 
+      "yyyy-MM-dd'T'HH:mm"
+    ),
+    status: item.status,
+    contacts: item.contacts || []
+  });
+};
+
+
 
   if (loading) {
     return (

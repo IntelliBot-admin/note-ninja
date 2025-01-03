@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { ActionItem } from '../../types/actionItem';
 import { CheckCircle, Clock, Edit2 } from 'lucide-react';
+import { useActionItemStore } from '../../store/actionItemStore';
+import { useNavigate } from 'react-router-dom';
 
 interface TimelineViewProps {
   items: ActionItem[];
@@ -10,11 +12,31 @@ interface TimelineViewProps {
 }
 
 export default function TimelineView({ items, onToggleComplete, onEdit }: TimelineViewProps) {
+  const { setShowForm, setFormData } = useActionItemStore();
+  const navigate = useNavigate();
+
   const sortedItems = [...items].sort((a, b) => {
     const dateA = a.dueDate instanceof Date ? a.dueDate : new Date(a.dueDate);
     const dateB = b.dueDate instanceof Date ? b.dueDate : new Date(b.dueDate);
     return dateA.getTime() - dateB.getTime();
   });
+
+const handleEditClick = (item: ActionItem) => {
+  setShowForm(true);
+  setFormData({
+    meetingId: item.meetingId, // Added meetingId
+    title: item.title,
+    description: item.description || '',
+    priority: item.priority,
+    dueDate: format(
+      item.dueDate instanceof Date ? item.dueDate : new Date(item.dueDate), 
+      "yyyy-MM-dd'T'HH:mm"
+    ),
+    status: item.status,
+    contacts: item.contacts || []
+  });
+};
+
 
   if (items.length === 0) {
     return (
@@ -40,7 +62,9 @@ export default function TimelineView({ items, onToggleComplete, onEdit }: Timeli
               {/* Content */}
               <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
-                  <h3 className={`font-medium ${
+                  <h3 
+                    onClick={() => navigate(`/meeting/${item.meetingId}`)}
+                    className={`font-medium cursor-pointer hover:text-indigo-600 ${
                     item.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'
                   }`}>
                     {item.title}
@@ -62,7 +86,7 @@ export default function TimelineView({ items, onToggleComplete, onEdit }: Timeli
                       )}
                     </button>
                     <button
-                      onClick={() => onEdit(item)}
+                      onClick={() => handleEditClick(item)}
                       className="p-1 text-gray-400 hover:text-indigo-600 rounded-full"
                       title="Edit action item"
                     >

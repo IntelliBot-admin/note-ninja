@@ -141,5 +141,17 @@ service cloud.firestore {
       allow update, delete: if isAuthenticated() && 
         resource.data.metadata.userId == request.auth.uid;
     }
+
+    // Config collection - read only
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Notifications collection
+    match /notifications/{notificationId} {
+      allow read: if true;
+      allow write: if false;
+    }
   }
 }

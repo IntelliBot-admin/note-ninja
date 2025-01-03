@@ -111,12 +111,12 @@ export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: Tra
     if (suggestions.length === 0 && !isLoadingSuggestions) return null;
 
     return (
-      <div className="absolute bottom-16 right-4 w-96 bg-white rounded-lg shadow-lg border p-4 mb-2">
+      <div className="fixed inset-x-2 top-20 sm:absolute sm:top-auto sm:bottom-16 sm:right-4 sm:w-96 bg-white rounded-lg shadow-lg border p-3 sm:p-4 mb-2 max-h-[60vh] overflow-y-auto z-50 mx-2">
         <div className="flex justify-between items-center mb-3">
           <h3 className="text-sm font-semibold text-gray-900">AI Suggestions</h3>
           <button 
             onClick={() => setSuggestions([])} 
-            className="text-gray-400 hover:text-gray-600"
+            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full"
           >
             <X className="w-4 h-4" />
           </button>
@@ -129,7 +129,7 @@ export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: Tra
         ) : (
           <div className="space-y-3">
             {suggestions.map((suggestion, index) => (
-              <div key={index} className="flex items-start space-x-2">
+              <div key={index} className="flex items-start space-x-2 p-2">
                 <div className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
                   suggestion.type === 'Question' 
                     ? 'bg-blue-100 text-blue-800'
@@ -137,7 +137,7 @@ export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: Tra
                 }`}>
                   {suggestion.type}
                 </div>
-                <p className="text-sm text-gray-600 flex-1">{suggestion.text}</p>
+                <p className="text-sm text-gray-600 flex-1 break-words">{suggestion.text}</p>
               </div>
             ))}
           </div>
@@ -157,14 +157,14 @@ export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: Tra
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border p-4 h-[400px] relative">
-      <div className="absolute top-4 right-4 flex items-center space-x-2">
+    <div className="bg-white rounded-lg shadow-sm border p-1 sm:p-4 h-[400px] relative overflow-hidden">
+      <div className="absolute top-2 sm:top-4 right-2 sm:right-4 flex items-center space-x-2">
         <Globe className="w-4 h-4 text-gray-400" />
         <select
           value={selectedLanguage}
           onChange={handleLanguageChange}
           disabled={isTranslating}
-          className="text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+          className="text-xs sm:text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 max-w-[100px] sm:max-w-none"
         >
           <option value="">Original (English)</option>
           {Object.entries(SUPPORTED_LANGUAGES).map(([code, name]) => (
@@ -175,15 +175,15 @@ export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: Tra
         </select>
       </div>
 
-      <div ref={transcriptRef} className="prose max-w-none h-full overflow-y-auto pt-12 scroll-smooth">
+      <div ref={transcriptRef} className="prose max-w-none h-full overflow-y-auto pt-12 scroll-smooth px-1 sm:px-4">
         {isTranslating ? (
           <div className="flex items-center justify-center h-full">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
           </div>
         ) : speakers && speakers.length > 0 && !translatedText ? (
-          <div className="space-y-4">
+          <div className="space-y-2">
             {speakers.map((utterance, index) => (
-              <div key={index} className="flex space-x-3">
+              <div key={index} className="flex flex-col sm:flex-row sm:space-x-3 space-y-1 sm:space-y-0">
                 <div className="flex-shrink-0">
                   {editingSpeaker === utterance.speaker ? (
                     <div className="flex items-center space-x-2">
@@ -191,7 +191,7 @@ export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: Tra
                         type="text"
                         value={newSpeakerName}
                         onChange={(e) => setNewSpeakerName(e.target.value)}
-                        className="px-2 py-1 text-sm border rounded"
+                        className="px-2 py-1 text-xs sm:text-sm border rounded"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             handleSpeakerUpdate(utterance.speaker);
@@ -201,7 +201,7 @@ export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: Tra
                       />
                       <button
                         onClick={() => handleSpeakerUpdate(utterance.speaker)}
-                        className="text-indigo-600 hover:text-indigo-800"
+                        className="inline-block px-2 py-1 bg-indigo-100 text-indigo-800 rounded text-xs sm:text-sm font-medium"
                       >
                         Save
                       </button>
@@ -214,7 +214,7 @@ export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: Tra
                       {onUpdateSpeaker && (
                         <button
                           onClick={() => handleSpeakerEdit(utterance.speaker)}
-                          className="text-gray-400 hover:text-gray-600"
+                          className="text-gray-400 hover:text-gray-600 p-1"
                         >
                           <Pencil className="w-3 h-3" />
                         </button>
@@ -222,31 +222,32 @@ export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: Tra
                     </span>
                   )}
                 </div>
-                <p className="flex-1">{utterance.text}</p>
+                <p className="flex-1 text-xs sm:text-base pl-1 sm:pl-0 break-words">{utterance.text}</p>
               </div>
             ))}
           </div>
         ) : (
-          <p className="whitespace-pre-wrap">{translatedText || transcript}</p>
+          <p className="whitespace-pre-wrap text-xs sm:text-base break-words">{translatedText || transcript}</p>
         )}
       </div>
 
       <SuggestionsPanel />
 
-      <div className="absolute bottom-4 right-4">
+      <div className="absolute bottom-2 sm:bottom-4 right-2 sm:right-4">
         <button
           onClick={copyToClipboard}
-          className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+          className="inline-flex items-center px-2 sm:px-3 py-1 sm:py-1.5 border border-transparent text-xs sm:text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 mr-1 sm:mr-2"
         >
           <Copy className="w-4 h-4 mr-1" />
           Copy Text
         </button>
         <button
-          className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-yellow-500 hover:bg-yellow-600 ml-2"
+          className="inline-flex items-center px-2 sm:px-3 py-1 sm:py-1.5 border border-transparent text-xs sm:text-sm font-medium rounded-md text-white bg-yellow-500 hover:bg-yellow-600"
           onClick={handleGetSuggestions}
         >
           <Lightbulb className="w-4 h-4 mr-1" />
-          Get Suggestions
+          <span className="hidden sm:inline">Get Suggestions</span>
+          <span className="sm:hidden">Suggest</span>
         </button>
       </div>
     </div>

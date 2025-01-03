@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { FileAudio, Loader2 } from 'lucide-react';
+import { FileAudio, Loader2, Plus } from 'lucide-react';
 import { transcribeAudio } from '../../services/assemblyAI';
 import { generateSummary } from '../../utils/aiSummary';
 import { MeetingType, meetingTypes } from '../../types/meeting';
@@ -14,12 +14,14 @@ import { transcribeAudioFromYoutube, uploadAudioFile } from '../../utils/audioHe
 import NoteEditor from '../notes/NoteEditor';
 import { Speaker } from '../../types/transcription';
 import { useSubscription } from '../../hooks/useSubscription';
+import { useActionItemStore } from '../../store/actionItemStore';
+import { useNavigationStore } from '../../store/navigationStore';
 
 interface AudioUploaderProps {
   meetingId: string;
   onTranscriptChange: (transcript: string) => void;
   onAudioUrlUpdate: (url: string) => Promise<void>;
-  onSummaryChange: (summary: string, type: MeetingType) => void;
+  onSummaryChange: (summary: string, type: MeetingType, actionItems: ActionItem[]) => void;
   onSpeakersChange: (speakers: Speaker[]) => void;
   onNotesChange?: (notes: string) => void;
   youtubeLink?: string;
@@ -30,9 +32,13 @@ interface AudioUploaderProps {
   initialMeetingType?: MeetingType;
   initialSpeakers?: Speaker[];
   personalNotes?: string;
+  initialRecommendedActionItems?: ActionItem[];
 }
 
-
+interface ActionItem {
+  title: string;
+  description: string;
+}
 
 export default function AudioUploader({
   meetingId,
@@ -48,7 +54,8 @@ export default function AudioUploader({
   initialSummary = '',
   initialMeetingType = 'general',
   initialSpeakers = [],
-  personalNotes: initialPersonalNotes = ''
+  personalNotes: initialPersonalNotes = '',
+  initialRecommendedActionItems = [],
 }: AudioUploaderProps) {
   const [file, setFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string>(initialAudioUrl);
@@ -68,6 +75,9 @@ export default function AudioUploader({
   const [personalNotes, setPersonalNotes] = useState(initialPersonalNotes);
   const { planName } = useSubscription();
   const [youtubeVideoId, setYoutubeVideoId] = useState<string | null>(null);
+  const [actionItems, setActionItems] = useState<ActionItem[]>(initialRecommendedActionItems);
+  const { setShowForm, setFormData } = useActionItemStore();
+  const { setActiveTab: setActiveTabNavigation } = useNavigationStore();
 
   const extractYoutubeId = (url: string): string | null => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -133,6 +143,17 @@ export default function AudioUploader({
     }
   }, [onAudioUrlUpdate, onTranscriptChange, MAX_FILE_SIZE]);
 
+  const addToActionItemModal = (item: ActionItem) => {
+    setActiveTabNavigation('actions');
+    setShowForm(true);
+    if(item.title && item.description) {
+      setFormData({
+        title: item.title,
+        description: item.description
+      });
+    }
+  };
+
   const handleGenerateSummary = async () => {
     if (!transcript) {
       toast.error('Please upload and transcribe an audio file first');
@@ -141,9 +162,10 @@ export default function AudioUploader({
 
     setIsGeneratingSummary(true);
     try {
-      const generatedSummary = await generateSummary(transcript, selectedMeetingType, showEmojis);
-      setSummary(generatedSummary);
-      onSummaryChange(generatedSummary, selectedMeetingType);
+      const { summary, actionItems } = await generateSummary(transcript, selectedMeetingType, showEmojis);
+      setSummary(summary);
+      setActionItems(actionItems || []);
+      onSummaryChange(summary, selectedMeetingType, actionItems || []);
       toast.success('Summary generated successfully');
     } catch (error) {
       console.error('Error generating summary:', error);
@@ -380,7 +402,7 @@ export default function AudioUploader({
                         onChange={(e) => {
                           const newType = e.target.value as MeetingType;
                           setSelectedMeetingType(newType);
-                          onSummaryChange(summary, newType);
+                          onSummaryChange(summary, newType, actionItems || []);
                         }}
                         className="w-full sm:w-64 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                       >
@@ -402,8 +424,47 @@ export default function AudioUploader({
                       {showMindMap ? (
                         <MindMap summary={summary} meetingType={selectedMeetingType} />
                       ) : (
-                        <div className="prose prose-sm max-w-none">
-                          <div dangerouslySetInnerHTML={{ __html: summary }} />
+                        <div className="flex gap-6 h-[calc(500px-4rem)]">
+                          <div className="flex-1 overflow-y-auto pr-6">
+                            <div className="prose prose-sm max-w-none">
+                              <div dangerouslySetInnerHTML={{ __html: summary }} />
+                            </div>
+                          </div>
+                          
+                          {!showMindMap && actionItems && actionItems.length > 0 && (
+                            <div className="w-1/3 border-l pl-6 flex flex-col">
+                              <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center sticky top-0 bg-white py-2">
+                                <span className="mr-2">📋</span> Recommended Action Items
+                              </h3>
+                              <div className="space-y-2 overflow-y-auto pr-6 pb-6 scrollbar-hide">
+                                {actionItems.map((item, index) => (
+                                  <div 
+                                    key={index} 
+                                    className="bg-gray-50 p-3 rounded-md border border-gray-200 hover:border-indigo-200 transition-colors text-sm group"
+                                  >
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex-1">
+                                        <h4 className="font-medium text-gray-900 flex items-center text-sm">
+                                          <span className="mr-2">•</span>
+                                          {item.title}
+                                        </h4>
+                                        <p className="text-gray-600 mt-0.5 ml-4 text-xs leading-relaxed">
+                                          {item.description}
+                                        </p>
+                                      </div>
+                                      <button 
+                                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 rounded-md"
+                                        title="Add Action Item"
+                                        onClick={() => addToActionItemModal(item)}
+                                      >
+                                        <Plus className="w-4 h-4 text-gray-600" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

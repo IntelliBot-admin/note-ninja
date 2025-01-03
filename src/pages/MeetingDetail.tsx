@@ -14,6 +14,8 @@ import { Meeting, MeetingType } from '../types/meeting';
 import toast from 'react-hot-toast';
 import { useRecordingStore } from '../store/recordingStore';
 import { Speaker } from '../types/transcription';
+import { useNavigationStore } from '../store/navigationStore';
+import { ActionItem } from '../types/actionItem';
 
 const meetingTools = [
   { icon: Mic, label: 'Record', shortLabel: 'Record', action: 'record' },
@@ -28,7 +30,8 @@ export default function MeetingDetail() {
   const { user } = useAuthStore();
   const { currentMeeting, setCurrentMeeting, updateMeeting } = useMeetingStore();
   const { categories } = useCategories();
-  const [activeTab, setActiveTab] = useState<string>('record');
+  // const [activeTab, setActiveTab] = useState<string>('record');
+  const { activeTab, setActiveTab } = useNavigationStore();
   const [isLoading, setIsLoading] = useState(true);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
@@ -45,12 +48,13 @@ export default function MeetingDetail() {
   const [recordMeetingType, setRecordMeetingType] = useState<MeetingType>('general');
   const [recordSpeakers, setRecordSpeakers] = useState<Speaker[]>([]);
   const [personalNotes, setPersonalNotes] = useState('');
-
+  const [recordRecommendedActionItems, setRecordRecommendedActionItems] = useState<ActionItem[]>([]);
   // MP3 Upload state
   const [uploadTranscript, setUploadTranscript] = useState('');
   const [uploadAudioUrl, setUploadAudioUrl] = useState('');
   const [uploadSummary, setUploadSummary] = useState('');
   const [uploadMeetingType, setUploadMeetingType] = useState<MeetingType>('general');
+  const [uploadRecommendedActionItems, setUploadRecommendedActionItems] = useState<ActionItem[]>([]);
   const [uploadSpeakers, setUploadSpeakers] = useState<Speaker[]>([]);
   useEffect(() => {
     if (!id || !user) return;
@@ -71,13 +75,15 @@ export default function MeetingDetail() {
           setRecordSummary(meetingData.recordSummary || '');
           setRecordMeetingType(meetingData.recordMeetingType || 'general');
           setRecordSpeakers(meetingData.recordSpeakers || []);
+          setRecordRecommendedActionItems(meetingData.recordRecommendedActionItems || []);
           // Set MP3 Upload content
           setUploadTranscript(meetingData.uploadTranscription || '');
           setUploadAudioUrl(meetingData.uploadAudioUrl || '');
           setUploadSummary(meetingData.uploadSummary || '');
           setUploadMeetingType(meetingData.uploadMeetingType || 'general');
           setUploadSpeakers(meetingData.uploadSpeakers || []);
-         setYoutubeLink(meetingData.youtubeLink || '');
+          setUploadRecommendedActionItems(meetingData.uploadRecommendedActionItems || []);
+          setYoutubeLink(meetingData.youtubeLink || '');
         } else {
           navigate('/');
         }
@@ -153,13 +159,13 @@ export default function MeetingDetail() {
         return (
           <AudioRecorder
             meetingId={id!}
-            onTranscriptChange={(transcript) => 
+            onTranscriptChange={(transcript) =>
               updateMeeting(id!, { transcription: transcript, source: 'record' })}
-            onAudioUrlUpdate={(url) => 
+            onAudioUrlUpdate={(url) =>
               updateMeeting(id!, { audioUrl: url, source: 'record' })}
-            onSummaryChange={(summary, type) => 
+            onSummaryChange={(summary, type) =>
               updateMeeting(id!, { summary, meetingType: type, source: 'record' })}
-            onSpeakersChange={(speakers) => 
+            onSpeakersChange={(speakers) =>
               updateMeeting(id!, { speakers, source: 'record' })}
             onRecordingStateChange={setIsRecording}
             onNotesChange={handleNotesChange}
@@ -169,30 +175,32 @@ export default function MeetingDetail() {
             initialMeetingType={recordMeetingType}
             initialSpeakers={recordSpeakers}
             initialNotes={personalNotes}
+            initialRecommendedActionItems={recordRecommendedActionItems}
           />
         );
       case 'upload':
         return (
           <AudioUploader
             meetingId={id!}
-            onTranscriptChange={(transcript) => 
+            onTranscriptChange={(transcript) =>
               updateMeeting(id!, { transcription: transcript, source: 'upload' })}
-            onAudioUrlUpdate={(url) => 
+            onAudioUrlUpdate={(url) =>
               updateMeeting(id!, { audioUrl: url, source: 'upload' })}
-            onSummaryChange={(summary, type) => 
-              updateMeeting(id!, { summary, meetingType: type, source: 'upload' })}
-            onSpeakersChange={(speakers) => 
+            onSummaryChange={(summary, type, actionItems) =>
+              updateMeeting(id!, { summary  , meetingType: type, source: 'upload', recommendedActionItems: actionItems })}
+            onSpeakersChange={(speakers) =>
               updateMeeting(id!, { speakers, source: 'upload' })}
             youtubeLink={youtubeLink}
-           onYoutubeLinkChange={(link) => {
-             setYoutubeLink(link);
-             updateMeeting(id!, { youtubeLink: link });
-           }}
+            onYoutubeLinkChange={(link) => {
+              setYoutubeLink(link);
+              updateMeeting(id!, { youtubeLink: link });
+            }}
             initialTranscript={uploadTranscript}
             initialAudioUrl={uploadAudioUrl}
             initialSummary={uploadSummary}
             initialMeetingType={uploadMeetingType}
             initialSpeakers={uploadSpeakers}
+            initialRecommendedActionItems={uploadRecommendedActionItems}
           />
         );
       case 'files':
@@ -312,7 +320,7 @@ export default function MeetingDetail() {
             ) : (
               <div className="flex items-center space-x-2">
                 {selectedCategory ? (
-                  <div 
+                  <div
                     className="inline-flex items-center px-2 py-1 rounded-full text-sm font-medium"
                     style={{
                       backgroundColor: `${getCategoryColor(selectedCategory)}20`,
@@ -354,8 +362,8 @@ export default function MeetingDetail() {
                       ${activeTab === tool.action
                         ? 'bg-indigo-100 text-indigo-700'
                         : isDisabled
-                        ? 'text-gray-400 cursor-not-allowed'
-                        : 'text-gray-600 hover:bg-gray-200'
+                          ? 'text-gray-400 cursor-not-allowed'
+                          : 'text-gray-600 hover:bg-gray-200'
                       }
                     `}
                     title={isDisabled ? 'Stop recording to switch tabs' : tool.label}

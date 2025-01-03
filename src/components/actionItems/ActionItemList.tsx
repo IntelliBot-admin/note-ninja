@@ -16,11 +16,11 @@ export default function ActionItemList({ meetingId }: ActionItemListProps) {
   const { user } = useAuthStore();
   const [items, setItems] = useState<ActionItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  // const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState<ActionItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'list'>('list');
-  const { getActionItemsQuery, toggleComplete } = useActionItemStore();
+  const { getActionItemsQuery, toggleComplete, showForm, setShowForm } = useActionItemStore();
 
   useEffect(() => {
     if (!user) return;

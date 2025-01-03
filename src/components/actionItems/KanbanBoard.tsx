@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Plus, X, Edit2 } from 'lucide-react';
+import { useAuthStore } from '../../store/authStore';
 import { ActionItem } from '../../types/actionItem';
 import { useKanbanStore, KanbanColumn } from '../../store/kanbanStore';
-import { useAuthStore } from '../../store/authStore';
+import { useActionItemStore } from '../../store/actionItemStore';
+import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface Column {
   id: string;
@@ -19,6 +22,7 @@ interface KanbanBoardProps {
 }
 
 export default function KanbanBoard({ items, onStatusChange, onEdit }: KanbanBoardProps) {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const { columns: savedColumns, fetchColumns, addColumn, removeColumn } = useKanbanStore();
   const [columns, setColumns] = useState<Column[]>([
@@ -28,6 +32,7 @@ export default function KanbanBoard({ items, onStatusChange, onEdit }: KanbanBoa
   ]);
   const [newColumnTitle, setNewColumnTitle] = useState('');
   const [showNewColumnForm, setShowNewColumnForm] = useState(false);
+  const { setShowForm, setFormData } = useActionItemStore();
 
   useEffect(() => {
     if (user) {
@@ -163,6 +168,22 @@ export default function KanbanBoard({ items, onStatusChange, onEdit }: KanbanBoa
       toast.error('Failed to remove column');
     }
   };
+const handleEditClick = (item: ActionItem) => {
+  setShowForm(true);
+  setFormData({
+    meetingId: item.meetingId, // Added meetingId
+    title: item.title,
+    description: item.description || '',
+    priority: item.priority,
+    dueDate: format(
+      item.dueDate instanceof Date ? item.dueDate : new Date(item.dueDate), 
+      "yyyy-MM-dd'T'HH:mm"
+    ),
+    status: item.status,
+    contacts: item.contacts || []
+  });
+};
+
 
   return (
     <div className="h-full overflow-x-auto">
@@ -213,11 +234,14 @@ export default function KanbanBoard({ items, onStatusChange, onEdit }: KanbanBoa
                             }`}
                           >
                             <div className="flex justify-between items-start">
-                              <h4 className="text-sm font-medium text-gray-900">
+                              <h4 
+                                onClick={() => navigate(`/meeting/${item.meetingId}`)}
+                                className="text-sm font-medium text-gray-900 hover:text-indigo-600 cursor-pointer"
+                              >
                                 {item.title}
                               </h4>
                               <button
-                                onClick={() => onEdit(item)}
+                                onClick={() => handleEditClick(item)}
                                 className="text-gray-400 hover:text-indigo-600"
                               >
                                 <Edit2 className="w-4 h-4" />

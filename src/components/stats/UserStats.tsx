@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { FileText, CheckSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -19,46 +19,54 @@ export default function UserStats({ userId, isSidebarLayout = false }: UserStats
   });
 
   useEffect(() => {
-    async function fetchStats() {
-      try {
-        // Get meetings count
-        const meetingsQuery = query(
-          collection(db, 'meetings'),
-          where('userId', '==', userId)
-        );
-        const meetingsSnapshot = await getDocs(meetingsQuery);
-        
-        // Calculate total minutes from all meetings
-        let totalMinutes = 0;
-        meetingsSnapshot.docs.forEach(doc => {
-          const data = doc.data();
-          if (data.duration) {
-            totalMinutes += data.duration;
-          }
-        });
-        
-        // Get action items stats
-        const actionItemsQuery = query(
-          collection(db, 'actionItems'),
-          where('userId', '==', userId)
-        );
-        const actionItemsSnapshot = await getDocs(actionItemsQuery);
-        const completedItems = actionItemsSnapshot.docs.filter(
-          doc => doc.data().status === 'completed'
-        ).length;
+    if (!userId) return;
 
-        setStats({
-          totalMeetings: meetingsSnapshot.size,
-          totalActionItems: actionItemsSnapshot.size,
-          completedActionItems: completedItems,
-          totalMinutes: totalMinutes
-        });
-      } catch (error) {
-        console.error('Error fetching user stats:', error);
-      }
-    }
+    // Query for all action items for this user
+    const actionItemsQuery = query(
+      collection(db, 'actionItems'),
+      where('userId', '==', userId)
+    );
 
-    fetchStats();
+    // Listen for action items changes
+    const unsubscribeActionItems = onSnapshot(actionItemsQuery, (snapshot) => {
+      const completedItems = snapshot.docs.filter(
+        doc => doc.data().status === 'completed'
+      ).length;
+
+      setStats(prev => ({
+        ...prev,
+        totalActionItems: snapshot.size,
+        completedActionItems: completedItems
+      }));
+    });
+
+    // Set up meetings listener
+    const meetingsQuery = query(
+      collection(db, 'meetings'),
+      where('userId', '==', userId)
+    );
+
+    const unsubscribeMeetings = onSnapshot(meetingsQuery, (snapshot) => {
+      let totalMinutes = 0;
+      snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        if (data.duration) {
+          totalMinutes += data.duration;
+        }
+      });
+
+      setStats(prev => ({
+        ...prev,
+        totalMeetings: snapshot.size,
+        totalMinutes
+      }));
+    });
+
+    // Cleanup listeners
+    return () => {
+      unsubscribeMeetings();
+      unsubscribeActionItems();
+    };
   }, [userId]);
 
   if (isSidebarLayout) {
@@ -82,7 +90,7 @@ export default function UserStats({ userId, isSidebarLayout = false }: UserStats
         >
           <div className="flex items-center space-x-2">
             <CheckSquare className="w-4 h-4 text-green-500" />
-            <span className="text-sm text-gray-600">{stats.completedActionItems}/{stats.totalActionItems} Tasks</span>
+            <span className="text-sm text-gray-600">{stats.completedActionItems}/{stats.totalActionItems} Action Items</span>
           </div>
         </button>
       </div>
@@ -106,7 +114,7 @@ export default function UserStats({ userId, isSidebarLayout = false }: UserStats
         className="flex items-center space-x-2 px-3 py-1.5 bg-white rounded-full border border-gray-200 hover:bg-indigo-50 transition-colors"
       >
         <CheckSquare className="w-4 h-4 text-green-500" />
-        <span className="text-sm text-gray-600">{stats.completedActionItems}/{stats.totalActionItems} Tasks</span>
+        <span className="text-sm text-gray-600">{stats.completedActionItems}/{stats.totalActionItems} Action Items</span>
       </button>
     </div>
   );

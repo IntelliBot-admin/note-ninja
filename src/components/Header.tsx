@@ -53,12 +53,12 @@ export default function Header() {
       <div className={`${
         isSidebarLayout
           ? 'h-full'
-          : 'max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-2 sm:py-4'
+          : 'max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-2 sm:py-4 relative'
       }`}>
         <div className={`${
           isSidebarLayout
             ? 'flex flex-col h-full'
-            : 'flex justify-between items-center'
+            : 'flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0'
         }`}>
           <div className={`flex items-center ${
             isSidebarLayout ? 'justify-center p-4' : 'space-x-2 sm:space-x-4 min-w-0'
@@ -93,7 +93,11 @@ export default function Header() {
               </h1>
             </div>
           </div>
-          {!isSidebarLayout && <UserStats userId={user.uid} />}
+          {!isSidebarLayout && (
+            <div className="order-last sm:order-none">
+              <UserStats userId={user.uid} />
+            </div>
+          )}
           
           {isSidebarLayout && (
             <div className="px-4">
@@ -104,7 +108,7 @@ export default function Header() {
           <div className={`flex ${
             isSidebarLayout 
               ? 'flex-col space-y-2 flex-1 px-4 py-2 min-h-0' 
-              : 'items-center space-x-2 sm:space-x-4'
+              : 'flex-row items-center justify-end space-x-2 sm:space-x-4'
           }`}>
             {isSidebarLayout ? (
               <>

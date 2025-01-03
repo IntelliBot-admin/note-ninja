@@ -10,7 +10,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "update-version": "bash scripts/update-version.sh"
   },
   "dependencies": {
     "@deepgram/sdk": "^3.9.0",
