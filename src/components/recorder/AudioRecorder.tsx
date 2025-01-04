@@ -22,6 +22,8 @@ import { debounce } from 'lodash';
 import { getStorage, ref, getBlob } from 'firebase/storage';
 import { useActionItemStore } from '../../store/actionItemStore';
 import { useNavigationStore } from '../../store/navigationStore';
+// import { Transcript } from './HyperAudio';
+// import EnhancedHyperAudioTranscript from './HyperAudio';
 
 
 const SHOW_INSTRUCTIONS_KEY = 'showRecordingInstructions';
@@ -82,6 +84,7 @@ export default function AudioRecorder({
   const [isTranslating, setIsTranslating] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [actionItems, setActionItems] = useState<ActionItem[]>(initialRecommendedActionItems);
+  // const [hyperAudioTranscript, setHyperAudioTranscript] = useState<Transcript | null>(null);
 
   const { setShowForm, setFormData } = useActionItemStore();
   const { setActiveTab: setActiveTabNavigation } = useNavigationStore();
@@ -130,7 +133,7 @@ export default function AudioRecorder({
     },
     onTranscriptUpdate: async (newTranscript: string) => {
       setTranscript(newTranscript);
-      onTranscriptChange(newTranscript);
+      // onTranscriptChange(newTranscript);
 
       if (saveTranscriptTimeoutRef.current) {
         clearTimeout(saveTranscriptTimeoutRef.current);
@@ -148,7 +151,11 @@ export default function AudioRecorder({
     onSpeakersUpdate: (newSpeakers: Speaker[]) => {
       setSpeakers(newSpeakers);
       debouncedSpeakersChange(newSpeakers);
-    }
+    },
+    // onHyperAudioUpdate: (newHyperAudio: {transcript: Transcript, audioSrc: string}) => {
+    //   setHyperAudioTranscript(newHyperAudio.transcript);
+    //   setAudioUrl(newHyperAudio.audioSrc);
+    // }
   });
 
   const handleRecordClick = () => {
@@ -172,7 +179,7 @@ export default function AudioRecorder({
     try {
       const storage = getStorage();
       const url = audioUrl || initialAudioUrl;
-      
+
       if (!url) {
         throw new Error('No audio URL available');
       }
@@ -184,10 +191,10 @@ export default function AudioRecorder({
 
       // Get the blob directly instead of the download URL
       const blob = await getBlob(audioRef);
-      
+
       // Create object URL from blob
       const blobUrl = URL.createObjectURL(blob);
-      
+
       // Create and trigger download
       const link = document.createElement('a');
       link.href = blobUrl;
@@ -213,7 +220,7 @@ export default function AudioRecorder({
   const addToActionItemModal = (item: ActionItem) => {
     setActiveTabNavigation('actions');
     setShowForm(true);
-    if(item.title && item.description) {
+    if (item.title && item.description) {
       setFormData({
         title: item.title,
         description: item.description
@@ -234,7 +241,7 @@ export default function AudioRecorder({
       setActionItems(actionItems || []);
       onSummaryChange(summary, selectedMeetingType);
 
-      
+
 
       await updateMeeting(meetingId, {
         summary: summary,
@@ -414,20 +421,10 @@ export default function AudioRecorder({
 
         {activeTab === 'transcription' && (
           <div className="space-y-4 bg-white rounded-lg shadow-sm border p-4">
-            <TranscriptDisplay transcript={transcript} speakers={speakers} onUpdateSpeaker={isRecording ? undefined : (oldName, newName) => {
-              const updatedSpeakers = speakers.map(speaker => ({
-                ...speaker,
-                speaker: speaker.speaker === oldName ? newName : speaker.speaker
-              }));
-
-              // Update local state
-              setSpeakers(updatedSpeakers);
-
-              // Notify parent component
-              if (onSpeakersChange) {
-                onSpeakersChange(updatedSpeakers);
-              }
-            }} />
+            <TranscriptDisplay
+              transcript={transcript}
+              className="min-h-[600px]"
+            />
           </div>
         )}
 
@@ -528,26 +525,24 @@ export default function AudioRecorder({
                         <div className="flex justify-center space-x-2 mb-4">
                           <button
                             onClick={() => setMobileView('summary')}
-                            className={`px-4 py-2 text-sm font-medium rounded-md ${
-                              mobileView === 'summary'
+                            className={`px-4 py-2 text-sm font-medium rounded-md ${mobileView === 'summary'
                                 ? 'bg-indigo-100 text-indigo-700'
                                 : 'bg-gray-100 text-gray-600'
-                            }`}
+                              }`}
                           >
                             Summary
                           </button>
                           <button
                             onClick={() => setMobileView('actions')}
-                            className={`px-4 py-2 text-sm font-medium rounded-md ${
-                              mobileView === 'actions'
+                            className={`px-4 py-2 text-sm font-medium rounded-md ${mobileView === 'actions'
                                 ? 'bg-indigo-100 text-indigo-700'
                                 : 'bg-gray-100 text-gray-600'
-                            }`}
+                              }`}
                           >
                             Action Items
                           </button>
                         </div>
-                        
+
                         {mobileView === 'summary' ? (
                           <div className="flex-1 overflow-y-auto px-4">
                             <div className="prose prose-sm max-w-none">
@@ -562,8 +557,8 @@ export default function AudioRecorder({
                               </h3>
                               <div className="space-y-2">
                                 {actionItems.map((item, index) => (
-                                  <div 
-                                    key={index} 
+                                  <div
+                                    key={index}
                                     className="bg-gray-50 p-3 rounded-md border border-gray-200 hover:border-indigo-200 transition-colors text-sm group"
                                   >
                                     <div className="flex items-start justify-between">
@@ -576,7 +571,7 @@ export default function AudioRecorder({
                                           {item.description}
                                         </p>
                                       </div>
-                                      <button 
+                                      <button
                                         className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 rounded-md"
                                         title="Add Action Item"
                                         onClick={() => addToActionItemModal(item)}
@@ -598,7 +593,7 @@ export default function AudioRecorder({
                             <div dangerouslySetInnerHTML={{ __html: translatedSummary || summary }} />
                           </div>
                         </div>
-                        
+
                         {actionItems && actionItems.length > 0 && (
                           <div className="w-1/3 border-l pl-6 flex flex-col">
                             <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center sticky top-0 bg-white py-2">
@@ -606,8 +601,8 @@ export default function AudioRecorder({
                             </h3>
                             <div className="space-y-2 overflow-y-auto pr-6 pb-6 scrollbar-hide">
                               {actionItems.map((item, index) => (
-                                <div 
-                                  key={index} 
+                                <div
+                                  key={index}
                                   className="bg-gray-50 p-3 rounded-md border border-gray-200 hover:border-indigo-200 transition-colors text-sm group"
                                 >
                                   <div className="flex items-start justify-between">
@@ -620,7 +615,7 @@ export default function AudioRecorder({
                                         {item.description}
                                       </p>
                                     </div>
-                                    <button 
+                                    <button
                                       className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 rounded-md"
                                       title="Add Action Item"
                                       onClick={() => addToActionItemModal(item)}

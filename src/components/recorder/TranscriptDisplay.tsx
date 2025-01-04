@@ -15,6 +15,7 @@ interface TranscriptDisplayProps {
   transcript: string;
   speakers?: Speaker[];
   onUpdateSpeaker?: (oldName: string, newName: string) => void;
+  className?: string;
 }
 
 interface Suggestion {
@@ -22,7 +23,25 @@ interface Suggestion {
   text: string;
 }
 
-export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: TranscriptDisplayProps) {
+const formatTranscript = (text: string) => {
+  // Split on sentences (after .!?)
+  const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+  
+  // Group sentences into paragraphs (every 3-4 sentences)
+  const paragraphs = sentences.reduce((acc: string[], sentence: string, i: number) => {
+    const paragraphIndex = Math.floor(i / 3);
+    if (!acc[paragraphIndex]) {
+      acc[paragraphIndex] = sentence.trim();
+    } else {
+      acc[paragraphIndex] += ' ' + sentence.trim();
+    }
+    return acc;
+  }, []);
+
+  return paragraphs;
+};
+
+export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker, className }: TranscriptDisplayProps) {
   const [selectedLanguage, setSelectedLanguage] = useState<string>('');
   const [translatedText, setTranslatedText] = useState<string>('');
   const [isTranslating, setIsTranslating] = useState(false);
@@ -77,7 +96,7 @@ export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: Tra
       setIsLoadingSuggestions(true);
       console.log('Getting suggestions...');
       const response = await serverPost('/get-suggestions', {
-        transcript: speakers
+        transcript: transcript
       });
       const parsedSuggestions = response.suggestions.map((item: string) => {
         const [type, ...textParts] = item.split(': ');
@@ -111,12 +130,12 @@ export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: Tra
     if (suggestions.length === 0 && !isLoadingSuggestions) return null;
 
     return (
-      <div className="fixed inset-x-2 top-20 sm:absolute sm:top-auto sm:bottom-16 sm:right-4 sm:w-96 bg-white rounded-lg shadow-lg border p-3 sm:p-4 mb-2 max-h-[60vh] overflow-y-auto z-50 mx-2">
+      <div className="fixed inset-x-2 top-20 sm:absolute sm:bottom-16 sm:right-4 sm:left-auto sm:top-auto sm:w-96 bg-white rounded-lg shadow-lg border p-4 mb-2 max-h-[400px] overflow-y-auto z-50">
         <div className="flex justify-between items-center mb-3">
           <h3 className="text-sm font-semibold text-gray-900">AI Suggestions</h3>
           <button 
             onClick={() => setSuggestions([])} 
-            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full"
+            className="text-gray-400 hover:text-gray-600"
           >
             <X className="w-4 h-4" />
           </button>
@@ -157,7 +176,7 @@ export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: Tra
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border p-1 sm:p-4 h-[400px] relative overflow-hidden">
+    <div className={`bg-white rounded-lg shadow-sm border p-1 sm:p-4 relative overflow-hidden ${className || 'h-[400px] max-h-[800px]'}`}>
       <div className="absolute top-2 sm:top-4 right-2 sm:right-4 flex items-center space-x-2">
         <Globe className="w-4 h-4 text-gray-400" />
         <select
@@ -175,13 +194,13 @@ export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: Tra
         </select>
       </div>
 
-      <div ref={transcriptRef} className="prose max-w-none h-full overflow-y-auto pt-12 scroll-smooth px-1 sm:px-4">
+      <div ref={transcriptRef} className="prose max-w-none h-[calc(100%-80px)] max-h-[calc(800px-80px)] overflow-y-auto pt-12 scroll-smooth px-1 sm:px-4">
         {isTranslating ? (
           <div className="flex items-center justify-center h-full">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
           </div>
         ) : speakers && speakers.length > 0 && !translatedText ? (
-          <div className="space-y-2">
+          <div className="space-y-6">
             {speakers.map((utterance, index) => (
               <div key={index} className="flex flex-col sm:flex-row sm:space-x-3 space-y-1 sm:space-y-0">
                 <div className="flex-shrink-0">
@@ -222,18 +241,28 @@ export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker }: Tra
                     </span>
                   )}
                 </div>
-                <p className="flex-1 text-xs sm:text-base pl-1 sm:pl-0 break-words">{utterance.text}</p>
+                <div className="flex-1 text-xs sm:text-base pl-1 sm:pl-0">
+                  {formatTranscript(utterance.text).map((paragraph, i) => (
+                    <p key={i} className="mb-3">{paragraph}</p>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
         ) : (
-          <p className="whitespace-pre-wrap text-xs sm:text-base break-words">{translatedText || transcript}</p>
+          <div className="space-y-4">
+            {formatTranscript(translatedText || transcript).map((paragraph, index) => (
+              <p key={index} className="whitespace-pre-wrap text-xs sm:text-base">
+                {paragraph}
+              </p>
+            ))}
+          </div>
         )}
       </div>
 
       <SuggestionsPanel />
 
-      <div className="absolute bottom-2 sm:bottom-4 right-2 sm:right-4">
+      <div className="absolute bottom-4 right-4 z-10">
         <button
           onClick={copyToClipboard}
           className="inline-flex items-center px-2 sm:px-3 py-1 sm:py-1.5 border border-transparent text-xs sm:text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 mr-1 sm:mr-2"

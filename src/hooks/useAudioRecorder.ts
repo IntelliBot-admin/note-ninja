@@ -8,6 +8,8 @@ import { useWakeLock } from './useWakeLock';
 import { useMediaSession } from './useMediaSession';
 import { socket } from '../lib/socket';
 import { useSubscription } from './useSubscription';
+import { transcribeAudio } from '../services/assemblyAI';
+import { Transcript, Utterance } from '../components/recorder/HyperAudio';
 
 
 interface UseAudioRecorderProps {
@@ -16,6 +18,7 @@ interface UseAudioRecorderProps {
   onTranscriptUpdate: (transcript: string, translatedTexts?: Record<string, string>) => void;
   onSpeakersUpdate: (speakers: Speaker[]) => void;
   setAudioUrl: (url: string) => void;
+  onHyperAudioUpdate?: (newHyperAudio: { transcript: Transcript; audioSrc: string }) => void;
 }
 
 interface TranscriptWord {
@@ -42,6 +45,7 @@ export function useAudioRecorder({
   meetingId,
   onAudioUrlUpdate,
   onTranscriptUpdate,
+  onHyperAudioUpdate,
   onSpeakersUpdate,
   setAudioUrl
 }: UseAudioRecorderProps) {
@@ -101,10 +105,13 @@ export function useAudioRecorder({
       await onAudioUrlUpdate(uploadedUrl);
 
       // setNotificationStatus('transcribing');
-      // const result = await transcribeAudio(audioBlob);
+      // const result = await transcribeAudio(uploadedUrl, meetingId);
 
-      // if (result.text) {
-      //   onTranscriptUpdate(result.text, result.utterances);
+      // if (result.utterances && onHyperAudioUpdate) {
+      //   onHyperAudioUpdate({
+      //     transcript: { utterances: result.utterances },
+      //     audioSrc: uploadedUrl
+      //   });
       // }
 
       // setNotificationStatus('completed');
@@ -478,20 +485,38 @@ export function useAudioRecorder({
       console.log('Connected to websocket server');
     });
 
+    socket.on('disconnect', () => {
+      console.log('Disconnected from websocket server');
+      // Attempt to reconnect
+      socket.connect();
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+      // Attempt to reconnect after a short delay
+      setTimeout(() => {
+        socket.connect();
+      }, 1000);
+    });
+
     socket.on('transcript', (transcript: string) => {
       if (transcript) {
         setCurrentTranscript(prev => {
           const newTranscript = prev ? `${prev} ${transcript}` : transcript;
+          console.log("newTranscript", newTranscript);
+          
           onTranscriptUpdate(newTranscript);
           return newTranscript;
         });
       }
     });
 
-    socket.on('data', handleSpeakerData);
+    // socket.on('data', handleSpeakerData);
 
     return () => {
       socket.off('transcript');
+      socket.off('disconnect');
+      socket.off('connect_error');
       socket.off('data');
     };
   }, [socket]);

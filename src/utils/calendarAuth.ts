@@ -45,7 +45,7 @@ export async function handleOAuthCallback(code: string, provider: 'google' | 'mi
   console.log('Handling OAuth callback for provider:', provider);
 
   // Exchange code for tokens using your backend
-  const response = await fetch(`${import.meta.env.VITE_API_URL}/calendar/oauth/callback`, {
+  const response = await fetch(`${import.meta.env.VITE_API_URL}/handleCalendarOAuth`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -139,7 +139,7 @@ export async function fetchCalendarEvents(userId: string): Promise<any[]> {
       throw new Error('No authentication token available');
     }
 
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/calendar/events`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/getCalendarEvents`, {
       headers: {
         'Authorization': `Bearer ${token}`,
       }
