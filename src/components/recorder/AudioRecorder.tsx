@@ -252,7 +252,9 @@ export default function AudioRecorder({
     if (item.title && item.description) {
       setFormData({
         title: item.title,
-        description: item.description
+        description: item.description,
+        meetingId: meetingId,
+
       });
     }
   };
