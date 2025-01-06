@@ -181,10 +181,15 @@ export default function AudioRecorder({
     if (isRecording) {
       stopRecording();
     } else {
-      // Show device selection dialog instead of starting recording directly
-      loadAudioDevices().then(() => {
-        setShowDeviceSelect(true);
-      });
+      if (isMobile) {
+        // On mobile, start recording directly
+        startRecordingFn();
+      } else {
+        // On desktop, show device selection dialog
+        loadAudioDevices().then(() => {
+          setShowDeviceSelect(true);
+        });
+      }
     }
   };
 
@@ -730,13 +735,15 @@ export default function AudioRecorder({
         />
       )}
 
-      <DeviceSelectDialog
-        isOpen={showDeviceSelect}
-        onClose={() => setShowDeviceSelect(false)}
-        onConfirm={handleDeviceSelect}
-        audioInputDevices={audioInputDevices}
-        audioOutputDevices={audioOutputDevices}
-      />
+      {!isMobile && (
+        <DeviceSelectDialog
+          isOpen={showDeviceSelect}
+          onClose={() => setShowDeviceSelect(false)}
+          onConfirm={handleDeviceSelect}
+          audioInputDevices={audioInputDevices}
+          audioOutputDevices={audioOutputDevices}
+        />
+      )}
     </div>
   );
 }

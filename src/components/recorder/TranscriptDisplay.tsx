@@ -24,6 +24,12 @@ interface Suggestion {
   text: string;
 }
 
+interface SuggestionsPanelProps {
+  suggestions: Suggestion[];
+  isLoadingSuggestions: boolean;
+  setSuggestions: (suggestions: Suggestion[]) => void;
+}
+
 const formatTranscript = (text: string) => {
   // Split on sentences (after .!?)
   const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
@@ -42,6 +48,62 @@ const formatTranscript = (text: string) => {
   return paragraphs;
 };
 
+const AutoScrollTranscript = ({ children }: { children: React.ReactNode }) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      const element = scrollRef.current;
+      element.scrollTop = element.scrollHeight;
+    }
+  }, [children]);
+
+  return (
+    <div ref={scrollRef} className="prose max-w-none h-[calc(100%-80px)] max-h-[calc(800px-80px)] overflow-y-auto pt-12 scroll-smooth px-1 sm:px-4">
+      {children}
+    </div>
+  );
+};
+
+const SuggestionsPanel = ({ suggestions, isLoadingSuggestions, setSuggestions }: SuggestionsPanelProps) => {
+  if (suggestions.length === 0 && !isLoadingSuggestions) return null;
+
+  return (
+    <div className="absolute inset-x-2 sm:absolute sm:bottom-16 sm:right-4 sm:left-auto sm:w-96 bg-white rounded-lg shadow-lg border p-4 mb-2 z-50">
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="text-sm font-semibold text-gray-900">AI Suggestions</h3>
+        <button 
+          onClick={() => setSuggestions([])} 
+          className="text-gray-400 hover:text-gray-600"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      
+      {isLoadingSuggestions ? (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        </div>
+      ) : (
+        <div className="space-y-3 max-h-[300px] overflow-y-auto">
+          {suggestions.map((suggestion, index) => (
+            <div key={index} className="flex items-start space-x-2 p-2">
+              <div className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                suggestion.type === 'Question' 
+                  ? 'bg-blue-100 text-blue-800'
+                  : 'bg-green-100 text-green-800'
+              }`}>
+                {suggestion.type}
+              </div>
+              <p className="text-sm text-gray-600 flex-1 break-words">{suggestion.text}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export function TranscriptDisplay({ 
   transcript, 
   partialTranscript,
@@ -52,18 +114,10 @@ export function TranscriptDisplay({
   const [selectedLanguage, setSelectedLanguage] = useState<string>('');
   const [translatedText, setTranslatedText] = useState<string>('');
   const [isTranslating, setIsTranslating] = useState(false);
-  const transcriptRef = useRef<HTMLDivElement>(null);
   const [editingSpeaker, setEditingSpeaker] = useState<string | null>(null);
   const [newSpeakerName, setNewSpeakerName] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
-
-  useEffect(() => {
-    if (transcriptRef.current) {
-      const element = transcriptRef.current;
-      element.scrollTop = element.scrollHeight;
-    }
-  }, [transcript, translatedText]);
 
   const handleLanguageChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const targetLanguage = e.target.value;
@@ -133,45 +187,6 @@ export function TranscriptDisplay({
     setEditingSpeaker(null);
   };
 
-  const SuggestionsPanel = () => {
-    if (suggestions.length === 0 && !isLoadingSuggestions) return null;
-
-    return (
-      <div className="fixed inset-x-2 top-20 sm:absolute sm:bottom-16 sm:right-4 sm:left-auto sm:top-auto sm:w-96 bg-white rounded-lg shadow-lg border p-4 mb-2 max-h-[400px] overflow-y-auto z-50">
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="text-sm font-semibold text-gray-900">AI Suggestions</h3>
-          <button 
-            onClick={() => setSuggestions([])} 
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        
-        {isLoadingSuggestions ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {suggestions.map((suggestion, index) => (
-              <div key={index} className="flex items-start space-x-2 p-2">
-                <div className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                  suggestion.type === 'Question' 
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'bg-green-100 text-green-800'
-                }`}>
-                  {suggestion.type}
-                </div>
-                <p className="text-sm text-gray-600 flex-1 break-words">{suggestion.text}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   if (!transcript) {
     return (
       <div className="bg-white rounded-lg shadow-sm border p-4 h-[400px] relative">
@@ -201,7 +216,7 @@ export function TranscriptDisplay({
         </select>
       </div>
 
-      <div ref={transcriptRef} className="prose max-w-none h-[calc(100%-80px)] max-h-[calc(800px-80px)] overflow-y-auto pt-12 scroll-smooth px-1 sm:px-4">
+      <AutoScrollTranscript>
         {isTranslating ? (
           <div className="flex items-center justify-center h-full">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -282,9 +297,13 @@ export function TranscriptDisplay({
             )}
           </div>
         )}
-      </div>
+      </AutoScrollTranscript>
 
-      <SuggestionsPanel />
+      <SuggestionsPanel 
+        suggestions={suggestions}
+        isLoadingSuggestions={isLoadingSuggestions}
+        setSuggestions={setSuggestions}
+      />
 
       <div className="absolute bottom-4 right-4 z-10">
         <button

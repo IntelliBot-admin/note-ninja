@@ -35,18 +35,7 @@ export default function ActionItemForm({ meetingId, onClose, editingItem }: Acti
         status: editingItem.status,
         contacts: editingItem.contacts || []
       });
-    } else {
-      // Reset form data when no editing item is provided
-      setFormData({
-        meetingId,
-        title: '',
-        description: '',
-        priority: 'medium',
-        dueDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-        status: 'pending',
-        contacts: []
-      });
-    }
+    } 
   }, [editingItem, setFormData, meetingId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
