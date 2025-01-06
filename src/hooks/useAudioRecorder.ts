@@ -91,6 +91,7 @@ export function useAudioRecorder({
   const [currentTranscript, setCurrentTranscript] = useState<string>('');
   const [isTranscriberLoading, setIsTranscriberLoading] = useState(false);
   const [isMicMuted, setIsMicMuted] = useState(false);
+  const [partialTranscript, setPartialTranscript] = useState<string>('');
 
   const { requestWakeLock, releaseWakeLock } = useWakeLock();
   const { setupMediaSession, clearMediaSession } = useMediaSession(isRecording, () => {
@@ -189,10 +190,11 @@ export function useAudioRecorder({
 
   const handleTranscriptUpdate = useCallback(
     (message: TranscriptMessage) => {
-      console.log('Received transcript:', message);
 
-      // Only process final transcripts
-      if (message.message_type === 'FinalTranscript' && message.text?.trim()) {
+      if (message.message_type === 'PartialTranscript' && message.text?.trim()) {
+        setPartialTranscript(message.text);
+      } else if (message.message_type === 'FinalTranscript' && message.text?.trim()) {
+        setPartialTranscript(''); // Clear partial transcript
         setCurrentTranscript((prev) => {
           const newTranscript = prev ? `${prev} ${message.text}` : message.text;
           console.log('newTranscript', newTranscript);
@@ -293,15 +295,16 @@ export function useAudioRecorder({
     }
   }, []);
 
-  const startRecording = useCallback(async () => {
+  const startRecording = useCallback(async (microphoneId?: string, speakerId?: string) => {
     try {
       console.log('Starting recording...');
       setIsTranscriberLoading(true);
+      onTranscriptUpdate('')
 
-      // Get audio stream
+      // Get audio stream with selected devices
       let streamForRecording: MediaStream;
       try {
-        streamForRecording = await getRecordingStream();
+        streamForRecording = await getRecordingStream(microphoneId, speakerId);
       } catch (error: any) {
         setIsTranscriberLoading(false);
         if (error.message === 'CANCELLED' || error.message === 'NO_AUDIO') {
@@ -429,82 +432,64 @@ export function useAudioRecorder({
         setIsRecording(false);
         setShowNotification(false);
 
-        // Stop MediaRecorder and process the recorded audio
+        let audioBlob: Blob | null = null;
+
+        // Stop MediaRecorder and collect the audio data
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
           await new Promise<void>((resolve) => {
-            mediaRecorderRef.current!.onstop = async () => {
-              try {
-                // Create blob from recorded chunks
-                const audioBlob = createAudioBlobFromChunks(audioChunksRef.current);
-                const tempUrl = URL.createObjectURL(audioBlob);
-                setAudioUrl(tempUrl);
-
-                // Process the recorded audio
-                await processAudioData(audioBlob);
-
-                // Clear the chunks
-                audioChunksRef.current = [];
-                resolve();
-              } catch (error) {
-                console.error('Error processing audio:', error);
-                resolve();
-              }
+            mediaRecorderRef.current!.onstop = () => {
+              // Just create the blob and store it
+              audioBlob = createAudioBlobFromChunks(audioChunksRef.current);
+              audioChunksRef.current = [];
+              resolve();
             };
-
             mediaRecorderRef.current!.stop();
           });
         }
 
-        // Release wake lock and clear media session
+        // Clean up all resources immediately
         await releaseWakeLock();
         clearMediaSession();
 
-        // Stop microphone stream
+        // Stop streams
         if (micStreamRef.current) {
-          console.log('Stopping microphone stream...');
-          micStreamRef.current.getTracks().forEach((track) => {
-            console.log(`Stopping microphone track: ${track.kind}`);
-            track.stop();
-          });
+          micStreamRef.current.getTracks().forEach(track => track.stop());
           micStreamRef.current = null;
         }
 
-        // Stop system audio stream
         if (systemStreamRef.current) {
-          console.log('Stopping system audio stream...');
-          systemStreamRef.current.getTracks().forEach((track) => {
-            console.log(`Stopping system track: ${track.kind}`);
-            track.stop();
-          });
+          systemStreamRef.current.getTracks().forEach(track => track.stop());
           systemStreamRef.current = null;
         }
 
-        // Stop AssemblyAI transcriber
-        if (
-          transcriptionMethod === 'assemblyai' &&
-          realtimeTranscriberRef.current
-        ) {
-          console.log('Closing AssemblyAI transcriber...');
+        // Stop transcription services
+        if (transcriptionMethod === 'assemblyai' && realtimeTranscriberRef.current) {
           await realtimeTranscriberRef.current.close();
           realtimeTranscriberRef.current = null;
         }
 
-        // Stop socket transcription if applicable
         if (transcriptionMethod === 'socket' && socket) {
-          console.log('Disconnecting socket...');
           socket.disconnect();
         }
 
-        // Clean up audio context
         if (audioContextRef.current) {
-          console.log('Closing audio context...');
-          audioContextRef.current.close();
+          await audioContextRef.current.close();
           audioContextRef.current = null;
         }
 
-        // Clear all transcript references
+        // Clear transcript references
         lastMessageRef.current = null;
         accumulatedSpeakersRef.current = [];
+
+        // Process the audio data after cleanup
+        if (audioBlob) {
+          const tempUrl = URL.createObjectURL(audioBlob);
+          setAudioUrl(tempUrl);
+          console.log(tempUrl,'tempUrl');
+          
+          await processAudioData(audioBlob);
+        }
+
       } catch (error) {
         console.error('Error stopping recording:', error);
         toast.error('Failed to stop recording properly');
@@ -520,42 +505,58 @@ export function useAudioRecorder({
     socket,
   ]);
 
-  const getRecordingStream = useCallback(async (): Promise<MediaStream> => {
-    if (isMobile) {
-      const stream = await getAudioStream();
-      micStreamRef.current = stream;
-      return stream;
-    }
-
-    // Desktop: Combine mic and system audio
-    const micStream = await getAudioStream();
-    micStreamRef.current = micStream;
-
+  const getRecordingStream = useCallback(async (microphoneId?: string, speakerId?: string): Promise<MediaStream> => {
     try {
-      const systemStream = await getSystemAudioStream();
-      systemStreamRef.current = systemStream;
-
-      const audioContext = new AudioContext({ sampleRate: 16000 });
-      audioContextRef.current = audioContext;
-
-      const micSource = audioContext.createMediaStreamSource(micStream);
-      const systemSource = audioContext.createMediaStreamSource(systemStream);
-
-      const merger = audioContext.createChannelMerger(2);
-      micSource.connect(merger, 0, 0);
-      systemSource.connect(merger, 0, 1);
-
-      const destination = audioContext.createMediaStreamDestination();
-      merger.connect(destination);
-
-      return destination.stream;
-    } catch (error: any) {
-      if (error.message === 'CANCELLED' || error.message === 'NO_AUDIO') {
-        micStream.getTracks().forEach((track) => track.stop());
-        throw error;
+      if (isMobile) {
+        const stream = await getAudioStream(microphoneId);
+        micStreamRef.current = stream;
+        return stream;
       }
-      console.warn('System audio unavailable, using microphone only:', error);
-      return micStream;
+
+      // Desktop: Combine mic and system audio
+      console.log('Getting microphone stream with ID:', microphoneId);
+      const micStream = await getAudioStream(microphoneId);
+      micStreamRef.current = micStream;
+
+      try {
+        console.log('Getting system audio stream with ID:', speakerId);
+        const systemStream = await getSystemAudioStream(speakerId);
+        systemStreamRef.current = systemStream;
+
+        // Create a new audio context with the correct sample rate
+        const audioContext = new AudioContext({ sampleRate: 16000 });
+        audioContextRef.current = audioContext;
+
+        // Create sources for both streams
+        const micSource = audioContext.createMediaStreamSource(micStream);
+        const systemSource = audioContext.createMediaStreamSource(systemStream);
+
+        // Create and configure the merger
+        const merger = audioContext.createChannelMerger(2);
+        
+        // Connect microphone to left channel (0) and system audio to right channel (1)
+        micSource.connect(merger, 0, 0);
+        systemSource.connect(merger, 0, 1);
+
+        // Create destination and connect merger
+        const destination = audioContext.createMediaStreamDestination();
+        merger.connect(destination);
+
+        console.log('Successfully created combined audio stream');
+        return destination.stream;
+      } catch (error: any) {
+        console.warn('System audio error:', error);
+        if (error.message === 'CANCELLED' || error.message === 'NO_AUDIO') {
+          micStream.getTracks().forEach(track => track.stop());
+          throw error;
+        }
+        // If system audio fails, fall back to microphone only
+        console.warn('System audio unavailable, using microphone only:', error);
+        return micStream;
+      }
+    } catch (error) {
+      console.error('Error getting recording stream:', error);
+      throw error;
     }
   }, []);
 
@@ -659,7 +660,7 @@ export function useAudioRecorder({
       isRecording &&
       transcriptionMethod === 'assemblyai'
     ) {
-      toast.error('Free plan is limited to 10 minutes of recording');
+      toast.error(`Free plan is limited to ${MAX_FREE_DURATION / 60} minutes of recording`);
       stopRecording();
     }
   }, [elapsedTime, isRecording, transcriptionMethod, stopRecording]);
@@ -689,5 +690,6 @@ export function useAudioRecorder({
     isMicMuted,
     muteMic,
     unmuteMic,
+    partialTranscript,
   };
 }

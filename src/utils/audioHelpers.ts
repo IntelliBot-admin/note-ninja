@@ -137,21 +137,38 @@ export function getMediaRecorderOptions(): MediaRecorderOptions {
   }
 }
 
-export async function getAudioStream(): Promise<MediaStream> {
+export async function getAudioStream(deviceId?: string): Promise<MediaStream> {
   try {
+    console.log('Requesting audio stream with device ID:', deviceId);
+    
+    const constraints: MediaTrackConstraints = {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+      sampleRate: 44100,
+      channelCount: 1
+    };
+
+    // Add deviceId constraint if provided
+    if (deviceId) {
+      constraints.deviceId = { exact: deviceId };
+    }
+
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-        sampleRate: 44100,
-        channelCount: 1
-      }
+      audio: constraints
     });
 
     if (!stream.getAudioTracks().length) {
       throw new Error('No audio track available in the stream');
     }
+
+    console.log('Successfully got audio stream:', 
+      stream.getAudioTracks().map(track => ({
+        label: track.label,
+        enabled: track.enabled,
+        muted: track.muted
+      }))
+    );
 
     return stream;
   } catch (error: any) {
@@ -166,12 +183,16 @@ export async function getAudioStream(): Promise<MediaStream> {
       throw new Error('Microphone access denied');
     }
     if (error.name === 'NotFoundError') {
-      toast.error('No microphone found. Please connect a microphone and try again.');
-      throw new Error('No microphone found');
+      toast.error('Selected microphone not found. Please choose a different device.');
+      throw new Error('Microphone not found');
     }
     if (error.name === 'NotReadableError') {
       toast.error('Cannot access microphone. Please check if it\'s being used by another application.');
       throw new Error('Cannot access microphone');
+    }
+    if (error.name === 'OverconstrainedError') {
+      toast.error('Selected microphone is no longer available.');
+      throw new Error('Device no longer available');
     }
 
     toast.error('Failed to access microphone');
@@ -179,9 +200,12 @@ export async function getAudioStream(): Promise<MediaStream> {
   }
 }
 
-export async function getSystemAudioStream(): Promise<MediaStream> {
+export async function getSystemAudioStream(deviceId?: string): Promise<MediaStream> {
   try {
+    console.log('Requesting system audio with device ID:', deviceId);
+
     const stream = await navigator.mediaDevices.getDisplayMedia({
+      // @ts-ignore - TypeScript doesn't recognize these options
       preferCurrentTab: false, // Force system audio selection
       systemAudio: 'include',
       audio: {
@@ -189,7 +213,8 @@ export async function getSystemAudioStream(): Promise<MediaStream> {
         noiseSuppression: false,
         autoGainControl: false,
         sampleRate: 44100,
-        channelCount: 2
+        channelCount: 2,
+        deviceId: deviceId
       },
       video: {
         displaySurface: 'monitor', // Default to entire screen
@@ -203,16 +228,29 @@ export async function getSystemAudioStream(): Promise<MediaStream> {
     const audioTracks = stream.getAudioTracks();
     
     // Stop video track immediately as we don't need it
-    stream.getVideoTracks().forEach(track => track.stop());
+    stream.getVideoTracks().forEach(track => {
+      console.log('Stopping video track:', track.label);
+      track.stop();
+    });
 
     if (audioTracks.length === 0) {
-      throw new Error('No system audio available. Please enable audio sharing in the dialog.');
+      throw new Error('NO_AUDIO');
     }
+
+    console.log('Successfully got system audio stream:', 
+      audioTracks.map(track => ({
+        label: track.label,
+        enabled: track.enabled,
+        muted: track.muted
+      }))
+    );
 
     // Create a new stream with only audio
     const audioStream = new MediaStream(audioTracks);
     return audioStream;
   } catch (error: any) {
+    console.error('System audio error:', error);
+
     // Handle user cancellation without showing error
     if (error.name === 'NotAllowedError' || error.message === 'Permission denied') {
       throw new Error('CANCELLED');
@@ -220,11 +258,18 @@ export async function getSystemAudioStream(): Promise<MediaStream> {
     
     // Handle no audio selected
     if (error.message === 'NO_AUDIO') {
+      toast.error('Please enable system audio sharing in the dialog');
       throw new Error('NO_AUDIO');
     }
 
+    // Handle device not found or no longer available
+    if (error.name === 'OverconstrainedError') {
+      toast.error('Selected audio output device is no longer available');
+      throw new Error('Device no longer available');
+    }
+
     // For other errors, show a generic message
-    console.error('System audio error:', error);
+    toast.error('Failed to capture system audio');
     throw new Error('SYSTEM_ERROR');
   }
 }
@@ -326,4 +371,44 @@ function writeString(view: DataView, offset: number, string: string) {
   for (let i = 0; i < string.length; i++) {
     view.setUint8(offset + i, string.charCodeAt(i));
   }
+}
+
+// Helper function to get available audio devices
+export async function getAudioDevices(): Promise<{
+  inputDevices: MediaDeviceInfo[];
+  outputDevices: MediaDeviceInfo[];
+}> {
+  try {
+    // Request permission first to ensure device labels are available
+    await navigator.mediaDevices.getUserMedia({ audio: true });
+    
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    
+    const inputDevices = devices.filter(device => device.kind === 'audioinput');
+    const outputDevices = devices.filter(device => device.kind === 'audiooutput');
+
+    console.log('Available audio devices:', {
+      inputs: inputDevices.map(d => ({ label: d.label, id: d.deviceId })),
+      outputs: outputDevices.map(d => ({ label: d.label, id: d.deviceId }))
+    });
+
+    return { inputDevices, outputDevices };
+  } catch (error) {
+    console.error('Error enumerating audio devices:', error);
+    toast.error('Failed to get audio devices');
+    throw new Error('Failed to get audio devices');
+  }
+}
+
+// Helper to watch for device changes
+export function watchAudioDevices(callback: () => void): () => void {
+  const handleDeviceChange = async () => {
+    console.log('Audio devices changed');
+    callback();
+  };
+
+  navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange);
+  return () => {
+    navigator.mediaDevices.removeEventListener('devicechange', handleDeviceChange);
+  };
 }

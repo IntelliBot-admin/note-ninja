@@ -13,6 +13,7 @@ interface Speaker {
 
 interface TranscriptDisplayProps {
   transcript: string;
+  partialTranscript?: string;
   speakers?: Speaker[];
   onUpdateSpeaker?: (oldName: string, newName: string) => void;
   className?: string;
@@ -41,7 +42,13 @@ const formatTranscript = (text: string) => {
   return paragraphs;
 };
 
-export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker, className }: TranscriptDisplayProps) {
+export function TranscriptDisplay({ 
+  transcript, 
+  partialTranscript,
+  speakers, 
+  onUpdateSpeaker, 
+  className 
+}: TranscriptDisplayProps) {
   const [selectedLanguage, setSelectedLanguage] = useState<string>('');
   const [translatedText, setTranslatedText] = useState<string>('');
   const [isTranslating, setIsTranslating] = useState(false);
@@ -248,6 +255,18 @@ export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker, class
                 </div>
               </div>
             ))}
+            {partialTranscript && (
+              <div className="flex flex-col sm:flex-row sm:space-x-3 space-y-1 sm:space-y-0 opacity-50">
+                <div className="flex-shrink-0">
+                  <span className="inline-block px-2 py-1 bg-gray-100 text-gray-800 rounded text-sm font-medium">
+                    Transcribing...
+                  </span>
+                </div>
+                <div className="flex-1 text-xs sm:text-base pl-1 sm:pl-0">
+                  {partialTranscript}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
@@ -256,6 +275,11 @@ export function TranscriptDisplay({ transcript, speakers, onUpdateSpeaker, class
                 {paragraph}
               </p>
             ))}
+            {partialTranscript && !translatedText && (
+              <p className="whitespace-pre-wrap text-xs sm:text-base opacity-50">
+                {partialTranscript}
+              </p>
+            )}
           </div>
         )}
       </div>

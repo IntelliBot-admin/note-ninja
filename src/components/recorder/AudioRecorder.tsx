@@ -22,6 +22,7 @@ import { debounce } from 'lodash';
 import { getStorage, ref, getBlob } from 'firebase/storage';
 import { useActionItemStore } from '../../store/actionItemStore';
 import { useNavigationStore } from '../../store/navigationStore';
+import DeviceSelectDialog from './DeviceSelection';
 // import { Transcript } from './HyperAudio';
 // import EnhancedHyperAudioTranscript from './HyperAudio';
 
@@ -85,6 +86,9 @@ export default function AudioRecorder({
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [actionItems, setActionItems] = useState<ActionItem[]>(initialRecommendedActionItems);
   // const [hyperAudioTranscript, setHyperAudioTranscript] = useState<Transcript | null>(null);
+  const [showDeviceSelect, setShowDeviceSelect] = useState(false);
+  const [audioInputDevices, setAudioInputDevices] = useState<MediaDeviceInfo[]>([]);
+  const [audioOutputDevices, setAudioOutputDevices] = useState<MediaDeviceInfo[]>([]);
 
   const { setShowForm, setFormData } = useActionItemStore();
   const { setActiveTab: setActiveTabNavigation } = useNavigationStore();
@@ -119,7 +123,8 @@ export default function AudioRecorder({
     duration,
     isMicMuted,
     muteMic,
-    unmuteMic
+    unmuteMic,
+    partialTranscript,
   } = useAudioRecorder({
     setAudioUrl,
     meetingId,
@@ -158,15 +163,34 @@ export default function AudioRecorder({
     // }
   });
 
+  const loadAudioDevices = useCallback(async () => {
+    try {
+      // Request permission and enumerate devices
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      
+      setAudioInputDevices(devices.filter(device => device.kind === 'audioinput'));
+      setAudioOutputDevices(devices.filter(device => device.kind === 'audiooutput'));
+    } catch (error) {
+      console.error('Error loading audio devices:', error);
+      toast.error('Failed to load audio devices');
+    }
+  }, []);
+
   const handleRecordClick = () => {
     if (isRecording) {
       stopRecording();
-
     } else {
-      startRecordingFn();
-      // Show instructions after Chrome dialog appears with shorter delay
-      showInstructions && setTimeout(() => setShowingInstructions(true), 400);
+      // Show device selection dialog instead of starting recording directly
+      loadAudioDevices().then(() => {
+        setShowDeviceSelect(true);
+      });
     }
+  };
+
+  const handleDeviceSelect = (microphoneId: string, speakerId: string) => {
+    setShowDeviceSelect(false);
+    startRecordingFn(microphoneId, speakerId);
   };
 
   const handleDontShowAgain = (value: boolean) => {
@@ -423,6 +447,7 @@ export default function AudioRecorder({
           <div className="space-y-4 bg-white rounded-lg shadow-sm border p-4">
             <TranscriptDisplay
               transcript={transcript}
+              partialTranscript={partialTranscript}
               className="min-h-[600px]"
             />
           </div>
@@ -704,6 +729,14 @@ export default function AudioRecorder({
           onStopRecording={stopRecording}
         />
       )}
+
+      <DeviceSelectDialog
+        isOpen={showDeviceSelect}
+        onClose={() => setShowDeviceSelect(false)}
+        onConfirm={handleDeviceSelect}
+        audioInputDevices={audioInputDevices}
+        audioOutputDevices={audioOutputDevices}
+      />
     </div>
   );
 }
