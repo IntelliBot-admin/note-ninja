@@ -4,13 +4,14 @@ import { Lock, Mail, User, Shield, ChevronUp, ChevronDown, CreditCard, Trash2 } 
 import toast from 'react-hot-toast';
 import CalendarSettings from '../components/settings/CalendarSettings';
 import { listProducts, createCheckoutSession, getPriceWithProduct, createAndRedirectToPortalSession, downgradeToFreePlan } from '../lib/stripe';
-import { StripeProduct } from '../lib/stripe';
+import { FormattedProduct } from '../lib/stripe';
 import { db } from '../lib/firebase';
 import { deleteDoc, doc } from 'firebase/firestore';
 import { auth } from '../lib/firebase';
 import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { useSubscription } from '../hooks/useSubscription';
 import { serverPost } from '../utils/api';
+import Plans from '../components/Plans';
 
 export default function Settings() {
    const { user, updatePassword } = useAuthStore();
@@ -28,9 +29,10 @@ export default function Settings() {
    const [showDowngradeModal, setShowDowngradeModal] = useState(false);
    const [isDowngrading, setIsDowngrading] = useState(false);
 
-   const { subscription: currentSubscription } = useSubscription();
-   const [products, setProducts] = useState<StripeProduct[]>([]);
+   const [products, setProducts] = useState<FormattedProduct[]>([]);
    const [currentPlanDetails, setCurrentPlanDetails] = useState<any>(null);
+   const { subscription: currentSubscription } = useSubscription();
+
 
    useEffect(() => {
       const fetchProducts = async () => {
@@ -266,181 +268,7 @@ export default function Settings() {
                </div>
 
                {/* Plan Section */}
-               <div className="p-6">
-                  <div
-                     className="flex items-center justify-between mb-4 cursor-pointer"
-                     onClick={() => setShowPlanSection(!showPlanSection)}
-                  >
-                     <h2 className="text-lg font-medium text-gray-900 flex items-center">
-                        <CreditCard className="w-5 h-5 mr-2 text-gray-400" />
-                        Plan & Billing
-                     </h2>
-                     <button
-                        type="button"
-                        className="text-gray-400 hover:text-gray-600"
-                        aria-expanded={showPlanSection}
-                     >
-                        {showPlanSection ? (
-                           <ChevronUp className="w-5 h-5" />
-                        ) : (
-                           <ChevronDown className="w-5 h-5" />
-                        )}
-                     </button>
-                  </div>
-
-                  {showPlanSection && (
-                     <div className="space-y-4">
-                        <div className="border-b border-gray-200 pb-4">
-                           <div className="mt-6 flex items-center justify-between">
-                              <div>
-                                 {currentSubscription && currentPlanDetails ? (
-                                    <>
-                                       <p className="text-sm font-medium text-gray-900">
-                                          You are on {currentPlanDetails.product.name} Plan
-                                          {/* {currentSubscription.status === 'trialing' && ' (Trial)'} */}
-                                       </p>
-                                       <p className="text-sm text-gray-500">
-                                          {currentSubscription.status === 'trialing' 
-                                             ? 'Free trial until ' + new Date(currentSubscription.currentPeriodEnd).toLocaleDateString()
-                                             : `Paying $${(currentPlanDetails.unit_amount / 100).toFixed(2)} per ${currentPlanDetails.recurring.interval}`
-                                          }
-                                       </p>
-                                       {currentSubscription.status !== 'trialing' && (
-                                          <p className="text-xs text-gray-400 mt-1">
-                                             Next billing date: {new Date(currentSubscription.currentPeriodEnd).toLocaleDateString()}
-                                          </p>
-                                       )}
-                                    </>
-                                 ) : (
-                                    <>
-                                       <p className="text-sm font-medium text-gray-900">Free Plan</p>
-                                       <p className="text-sm text-gray-500">Basic features for personal use</p>
-                                    </>
-                                 )}
-                              </div>
-                              {currentSubscription && user?.uid && (
-                                 <button
-                                    onClick={async () => {
-                                       try {
-                                          setIsRedirecting(true);
-                                          await createAndRedirectToPortalSession(user.uid);
-                                       } catch (error) {
-                                          setIsRedirecting(false);
-                                       }
-                                    }}
-                                    disabled={isRedirecting}
-                                    className="inline-flex items-center px-3 py-1.5 border border-indigo-600 rounded-md text-sm font-medium text-indigo-600 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-                                 >
-                                    {isRedirecting ? (
-                                       <>
-                                          <svg 
-                                             className="animate-spin -ml-1 mr-2 h-4 w-4 text-indigo-600" 
-                                             xmlns="http://www.w3.org/2000/svg" 
-                                             fill="none" 
-                                             viewBox="0 0 24 24"
-                                          >
-                                             <circle 
-                                                className="opacity-25" 
-                                                cx="12" 
-                                                cy="12" 
-                                                r="10" 
-                                                stroke="currentColor" 
-                                                strokeWidth="4"
-                                             />
-                                             <path 
-                                                className="opacity-75" 
-                                                fill="currentColor" 
-                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                             />
-                                          </svg>
-                                          Redirecting...
-                                       </>
-                                    ) : (
-                                       'Manage'
-                                    )}
-                                 </button>
-                              )}
-                           </div>
-                        </div>
-
-                        <div>
-                           <h3 className="text-base font-medium text-gray-900 mb-4">Available Plans</h3>
-                           <div className="grid gap-4 sm:grid-cols-2">
-                              {/* Free Plan Card */}
-                              {/* <div className="border rounded-lg p-4 hover:border-indigo-500 transition-colors">
-                                 <div className="flex justify-between items-start">
-                                    <div>
-                                       <h4 className="text-lg font-medium text-gray-900">Free Plan</h4>
-                                       <p className="text-sm text-gray-500 mt-1">Basic features for personal use</p>
-                                    </div>
-                                    <p className="text-lg font-medium text-gray-900">$0/month</p>
-                                 </div>
-
-                                 <button
-                                    type="button"
-                                    onClick={() => currentSubscription && user?.uid && setShowDowngradeModal(true)}
-                                    className={`mt-4 w-full inline-flex items-center justify-center px-4 py-2 border rounded-md shadow-sm text-sm font-medium ${
-                                       !currentSubscription
-                                          ? 'bg-gray-100 text-gray-800 border-gray-300'
-                                          : 'border-transparent text-white bg-indigo-600 hover:bg-indigo-700'
-                                    } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
-                                    disabled={!currentSubscription}
-                                 >
-                                    {!currentSubscription ? 'Current Plan' : 'Downgrade to Free Plan'}
-                                 </button>
-                              </div> */}
-
-                              {/* Existing Paid Plans */}
-                              {products.map((product) => (
-                                 <div key={product.id} className="border rounded-lg p-4 hover:border-indigo-500 transition-colors">
-                                    <div className="flex justify-between items-start">
-                                       <div>
-                                          <h4 className="text-lg font-medium text-gray-900">{product.product.name}</h4>
-                                          <p className="text-sm text-gray-500 mt-1">{product.product.description}</p>
-                                       </div>
-                                       <p className="text-lg font-medium text-gray-900">
-                                          ${(product.unit_amount / 100).toFixed(2)}/{product.recurring.interval}
-                                       </p>
-                                    </div>
-
-                                    <button
-                                       type="button"
-                                       onClick={() => currentSubscription?.status === 'trialing' ? setShowDowngradeModal(true) : handleSubscribe(product.id)}
-                                       className={`mt-4 w-full inline-flex items-center justify-center px-4 py-2 border rounded-md shadow-sm text-sm font-medium ${
-                                          currentSubscription?.planId === product.id
-                                             ? currentSubscription.status === 'trialing'
-                                                ? 'bg-red-600 text-white hover:bg-red-700 border-transparent'
-                                                : 'bg-gray-100 text-gray-800 border-gray-300'
-                                             : 'border-transparent text-white bg-indigo-600 hover:bg-indigo-700'
-                                       } focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                                          currentSubscription?.status === 'trialing' ? 'focus:ring-red-500' : 'focus:ring-indigo-500'
-                                       }`}
-                                       disabled={processingPlanId === product.id}
-                                    >
-                                       {processingPlanId === product.id ? (
-                                          <>
-                                             <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                             </svg>
-                                             Processing...
-                                          </>
-                                       ) : currentSubscription?.planId === product.id
-                                          ? currentSubscription.status === 'trialing'
-                                             ? 'Cancel Trial'
-                                             : 'Current Plan'
-                                          : currentSubscription
-                                             ? `Switch to ${product.product.name}`
-                                             : `Subscribe to ${product.product.name}`
-                                       }
-                                    </button>
-                                 </div>
-                              ))}
-                           </div>
-                        </div>
-                     </div>
-                  )}
-               </div>
+               <Plans />
 
                {/* Security Section */}
                <div className="p-6">

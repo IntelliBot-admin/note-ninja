@@ -13,44 +13,80 @@ export const planMap = {
 }
 
 // Type definitions
+// export interface StripePrice {
+//    id: string;
+//    unit_amount: number;
+//    product: string;
+//    nickname?: string;
+//    recurring: {
+//       interval: string;
+//       interval_count: number;
+//    };
+// }
+
+// export interface StripeProduct {
+//    id: string;
+//    object: 'price';
+//    active: boolean;
+//    currency: string;
+//    unit_amount: number;
+//    recurring: {
+//       interval: string;
+//       interval_count: number;
+//    };
+//    product: {
+//       id: string;
+//       name: string;
+//       description: string;
+//       metadata: {
+//          firebaseRole: string;
+//       };
+//    };
+// }
+
+interface MarketingFeature {
+   name: string;
+ }
+ 
+ interface StripePriceRecurring {
+   interval: 'month' | 'year';
+   interval_count: number;
+   usage_type: 'licensed';
+ }
+ 
 export interface StripePrice {
    id: string;
-   unit_amount: number;
-   product: string;
-   nickname?: string;
-   recurring: {
-      interval: string;
-      interval_count: number;
-   };
-}
-
-export interface StripeProduct {
-   id: string;
-   object: 'price';
    active: boolean;
    currency: string;
+   lookup_key: string;
    unit_amount: number;
-   recurring: {
-      interval: string;
-      interval_count: number;
+   recurring: StripePriceRecurring;
+ }
+ 
+ export interface FormattedProduct {
+   id: string;
+   name: string;
+   description: string | null;
+   metadata: {
+     annual_price_id?: string;
+     monthly_price_id?: string;
+     firebaseRole?: string;
+     [key: string]: string | undefined;
    };
-   product: {
-      id: string;
-      name: string;
-      description: string;
-      metadata: {
-         firebaseRole: string;
-      };
+   marketing_features: MarketingFeature[];
+   prices: {
+     monthly: StripePrice | null;
+     annual: StripePrice | null;
    };
-}
+ }
 
 // Function to list all active products
-export const listProducts = async (): Promise<StripeProduct[]> => {
+export const listProducts = async (): Promise<FormattedProduct[]> => {
    try {
 
       const response = await serverFetch('/products');
 
-      return response.prices;
+      return response.products;
    } catch (error) {
       console.error('Error fetching products:', error);
       throw error;
