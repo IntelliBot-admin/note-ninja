@@ -299,7 +299,6 @@ export function useAudioRecorder({
     try {
       console.log('Starting recording...');
       setIsTranscriberLoading(true);
-      onTranscriptUpdate('')
 
       // Get audio stream with selected devices
       let streamForRecording: MediaStream;

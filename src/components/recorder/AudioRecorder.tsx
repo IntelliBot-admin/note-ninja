@@ -177,8 +177,9 @@ export default function AudioRecorder({
     }
   }, []);
 
-  const handleRecordClick = () => {
+  const handleRecordClick = async () => {
     if (isRecording) {
+      await updateMeeting(meetingId, { transcription: transcript });
       stopRecording();
     } else {
       if (isMobile) {
