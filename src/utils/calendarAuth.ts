@@ -117,7 +117,7 @@ const MSAL_CONFIG = {
 
     clientId: MS_CLIENT_ID,
 
-    authority: `https://login.microsoftonline.com/${MS_TENANT_ID}`,
+    authority: `https://login.microsoftonline.com/common`,
 
     redirectUri: MS_REDIRECT_URI,
 
