@@ -34,6 +34,34 @@ export default function CalendarView({ meetings }: CalendarViewProps) {
     setCurrentDate(new Date());
   };
 
+  const getWeeks = () => {
+    const weeks = [];
+    let currentWeek = [];
+
+    // Add empty days for the first week
+    const firstDay = days[0].getDay();
+    for (let i = 0; i < firstDay; i++) {
+      currentWeek.push(null);
+    }
+
+    // Add all days of the month
+    days.forEach(day => {
+      if (currentWeek.length === 7) {
+        weeks.push(currentWeek);
+        currentWeek = [];
+      }
+      currentWeek.push(day);
+    });
+
+    // Add empty days for the last week
+    while (currentWeek.length < 7) {
+      currentWeek.push(null);
+    }
+    weeks.push(currentWeek);
+
+    return weeks;
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
@@ -71,44 +99,45 @@ export default function CalendarView({ meetings }: CalendarViewProps) {
       </div>
 
       <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700">
-        {days.map(day => {
-          const dayMeetings = getMeetingsForDay(day);
-          const isCurrentDay = isToday(day);
-
-          return (
+        {getWeeks().map((week, weekIndex) => (
+          week.map((day, dayIndex) => (
             <div
-              key={day.toISOString()}
+              key={`${weekIndex}-${dayIndex}`}
               className={`bg-white dark:bg-gray-800 min-h-[120px] p-2 ${
-                isCurrentDay ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                day && isToday(day) ? 'bg-blue-50 dark:bg-blue-900/20' : ''
               }`}
             >
-              <p className={`text-sm font-medium ${
-                isCurrentDay 
-                  ? 'text-blue-600 dark:text-blue-400' 
-                  : 'text-gray-900 dark:text-gray-100'
-              }`}>
-                {format(day, 'd')}
-              </p>
-              
-              <div className="mt-1 space-y-1">
-                {dayMeetings.map(meeting => (
-                  <button
-                    key={meeting.id}
-                    onClick={() => navigate(`/meeting/${meeting.id}`)}
-                    className="w-full text-left p-1 rounded text-xs bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
-                  >
-                    <div className="truncate font-medium">
-                      {meeting.title}
-                    </div>
-                    <div className="text-indigo-600/70 dark:text-indigo-400/70 text-[10px]">
-                      {format(meeting.createDate.toDate(), 'h:mm a')}
-                    </div>
-                  </button>
-                ))}
-              </div>
+              {day && (
+                <>
+                  <p className={`text-sm font-medium ${
+                    isToday(day) 
+                      ? 'text-blue-600 dark:text-blue-400' 
+                      : 'text-gray-900 dark:text-gray-100'
+                  }`}>
+                    {format(day, 'd')}
+                  </p>
+                  
+                  <div className="mt-1 space-y-1">
+                    {getMeetingsForDay(day).map(meeting => (
+                      <button
+                        key={meeting.id}
+                        onClick={() => navigate(`/meeting/${meeting.id}`)}
+                        className="w-full text-left p-1 rounded text-xs bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+                      >
+                        <div className="truncate font-medium">
+                          {meeting.title}
+                        </div>
+                        <div className="text-indigo-600/70 dark:text-indigo-400/70 text-[10px]">
+                          {format(meeting.createDate.toDate(), 'h:mm a')}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
-          );
-        })}
+          ))
+        ))}
       </div>
     </div>
   );
