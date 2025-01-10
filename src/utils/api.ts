@@ -2,6 +2,7 @@ import { getAuth } from 'firebase/auth';
 
 interface FetchOptions extends RequestInit {
   requiresAuth?: boolean;
+  customHeaders?: Record<string, string>;
 }
 
 export async function apiFetch(
@@ -86,10 +87,19 @@ export async function serverFetch(
   options: FetchOptions = {}
 ) {
   try {
-    const { requiresAuth = true, ...fetchOptions } = options;
+    const { requiresAuth = true, customHeaders = {}, ...fetchOptions } = options;
     
     const headers = new Headers(options.headers);
 
+    // Set custom headers first
+    Object.entries(customHeaders).forEach(([key, value]) => {
+      headers.set(key, value);
+    });
+
+    // Set default headers
+    headers.set('Content-Type', 'application/json');
+
+    // Add auth header if required
     if (requiresAuth) {
       const auth = getAuth();
       const idToken = await auth.currentUser?.getIdToken();
@@ -99,7 +109,6 @@ export async function serverFetch(
       }
       
       headers.set('Authorization', `Bearer ${idToken}`);
-      headers.set('Content-Type', 'application/json');
     }
 
     const response = await fetch(`${import.meta.env.VITE_SERVER_URL}/api/v1${endpoint}`, {

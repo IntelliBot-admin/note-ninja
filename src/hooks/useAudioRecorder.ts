@@ -185,7 +185,7 @@ export function useAudioRecorder({
         throw error;
       }
     },
-    [meetingId, onAudioUrlUpdate, currentTranscript]
+    [meetingId, onAudioUrlUpdate]
   );
 
   const handleTranscriptUpdate = useCallback(

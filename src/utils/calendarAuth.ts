@@ -1,161 +1,503 @@
-import { getAuth } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
+
 import { db } from '../lib/firebase';
-import { CalendarProvider } from '../types/calendar';
+
+import { serverFetch, serverPost } from './api';
+
+import { PublicClientApplication, PopupRequest } from '@azure/msal-browser';
+
+import { useAuthStore } from '../store/authStore';
+
+import { useMsalStore } from '../store/msalStore';
+
+const { msalInstance, isInitialized, setMsalInstance, setInitialized } = useMsalStore.getState();
+
+
 
 // Google OAuth configuration
+
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
 const GOOGLE_REDIRECT_URI = `${window.location.origin}/settings`;
+
 const GOOGLE_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 
+
+
 // Microsoft OAuth configuration
+
 const MS_CLIENT_ID = import.meta.env.VITE_MICROSOFT_CLIENT_ID;
+
 const MS_TENANT_ID = 'b966668f-3fe1-4cb2-93ee-0b76ac8c9bf8';
+
 const MS_REDIRECT_URI = `${window.location.origin}/settings`;
+
 const MS_SCOPE = 'Calendars.Read Calendars.ReadWrite Calendars.Read.Shared User.Read offline_access';
 
-export async function initGoogleAuth() {
-  const auth = getAuth();
-  const user = auth.currentUser;
-  if (!user) throw new Error('User not authenticated');
-  // console.log('Starting OAuth callback with code:', code, 'provider:', provider);
 
-  const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${GOOGLE_REDIRECT_URI}&response_type=code&scope=${GOOGLE_SCOPE}&access_type=offline&prompt=consent&state=google`;
-  
-  window.location.href = url;
-}
 
-export async function initMicrosoftAuth() {
-  const auth = getAuth();
-  const user = auth.currentUser;
-  if (!user) throw new Error('User not authenticated');
-  
-  console.log('Initiating Microsoft auth flow...');
 
-  const url = `https://login.microsoftonline.com/${MS_TENANT_ID}/oauth2/v2.0/authorize?client_id=${MS_CLIENT_ID}&redirect_uri=${encodeURIComponent(MS_REDIRECT_URI)}&response_type=code&scope=${encodeURIComponent(MS_SCOPE)}&prompt=consent&state=microsoft`;
-  
-  window.location.href = url;
-}
 
-export async function handleOAuthCallback(code: string, provider: 'google' | 'microsoft') {
-  const auth = getAuth();
-  const user = auth.currentUser;
-  if (!user) throw new Error('User not authenticated');
-  
-  console.log('Handling OAuth callback for provider:', provider);
+export async function handleGoogle() {
 
-  // Exchange code for tokens using your backend
-  const response = await fetch(`${import.meta.env.VITE_API_URL}/handleCalendarOAuth`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${await user.getIdToken()}`
-    },
-    body: JSON.stringify({ code, provider })
+  const SCOPES = [
+
+    'https://www.googleapis.com/auth/calendar.events',
+
+    'https://www.googleapis.com/auth/calendar.readonly',
+
+    'https://www.googleapis.com/auth/calendar'
+
+  ].join(' ');
+
+
+
+  const redirect_uri = window.location.origin;
+
+
+
+  //@ts-ignore
+
+  const client = window.google.accounts.oauth2.initCodeClient({
+
+    client_id: GOOGLE_CLIENT_ID,
+
+    scope: SCOPES,
+
+    access_type: 'offline',
+
+    prompt: 'consent',
+
+    ux_mode: 'popup',
+
+    redirect_uri: redirect_uri,
+
+    callback: async (response: any) => {
+
+      try {
+
+        if (!response.code) {
+
+          return;
+
+        }
+
+        await serverPost('/store-refresh-token', {
+
+          code: response.code,
+
+          redirect_uri: redirect_uri,
+
+          provider: 'google'
+
+        });
+
+      } catch (error) {
+
+        console.error('Error handling Google OAuth callback:', error);
+
+      }
+
+    }
+
   });
 
-  if (!response.ok) {
-    let errorData;
-    try {
-      errorData = await response.json();
-    } catch {
-      errorData = await response.text();
-    }
-    console.error('OAuth callback error:', errorData);
-    throw new Error('Failed to exchange auth code');
-  }
+  client.requestCode();
 
-  const data = await response.json();
-  console.log('OAuth callback successful, storing provider data...');
-  
-  // Ensure we have the required data
-  if (!data.access_token || !data.refresh_token || !data.expires_in) {
-    console.error('Missing required token data:', data);
-    throw new Error('Incomplete token data received');
-  }
-
-  console.log('Creating Firestore document for calendar provider:', provider);
-  // Store calendar provider in Firestore
-  const providerDoc = doc(db, 'users', user.uid, 'calendarProviders', provider);
-  const providerData = {
-    type: provider,
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token,
-    expiresAt: Date.now() + (data.expires_in * 1000),
-    email: data.email,
-    name: data.name || data.email
-  };
-  
-  await setDoc(providerDoc, providerData);
-  console.log('Successfully stored calendar provider data');
-
-  return data;
 }
 
-export async function getConnectedCalendars(userId: string): Promise<CalendarProvider[]> {
+
+
+
+// Constants and types
+
+const MSAL_CONFIG = {
+
+  auth: {
+
+    clientId: MS_CLIENT_ID,
+
+    authority: `https://login.microsoftonline.com/${MS_TENANT_ID}`,
+
+    redirectUri: MS_REDIRECT_URI,
+
+  },
+
+  cache: {
+
+    cacheLocation: 'localStorage', // Changed from sessionStorage to localStorage
+
+    storeAuthStateInCookie: true // Enable cookies for better persistence
+
+  }
+
+};
+
+
+
+export async function initializeMsal() {
+
+
+
+  if (!isInitialized) {
+
+    const instance = new PublicClientApplication(MSAL_CONFIG);
+
+    await instance.initialize();
+
+    setMsalInstance(instance);
+
+    setInitialized(true);
+
+    return instance;
+
+  }
+
+
+
+  return msalInstance;
+
+}
+
+
+
+// Handle Microsoft login
+
+export async function handleMicrosoft() {
+
   try {
-    console.log('Fetching connected calendars for user:', userId);
 
-    const microsoftDoc = await getDoc(doc(db, 'users', userId, 'calendarProviders', 'microsoft'));
-    const googleDoc = await getDoc(doc(db, 'users', userId, 'calendarProviders', 'google'));
-  
-    const calendars: CalendarProvider[] = [];
-  
-    if (microsoftDoc.exists()) {
-      console.log('Found Microsoft calendar data:', microsoftDoc.data());
-      const msData = microsoftDoc.data();
-      // Check if the token is still valid
-      if (msData.expiresAt > Date.now()) {
-        calendars.push({ id: 'microsoft', ...msData } as CalendarProvider);
-      } else {
-        console.log('Microsoft token expired');
-      }
-    }
-  
-    if (googleDoc.exists()) {
-      console.log('Found Google calendar data:', googleDoc.data());
-      const googleData = googleDoc.data();
-      if (googleData.expiresAt > Date.now()) {
-        calendars.push({ id: 'google', ...googleData } as CalendarProvider);
-      } else {
-        console.log('Google token expired');
-      }
+    console.log("[handleMicrosoft] Starting Microsoft authentication flow");
+
+    // Ensure MSAL is initialized before using it
+
+    if (!msalInstance) {
+
+      console.log("[handleMicrosoft] No MSAL instance found, initializing...");
+
+      await initializeMsal();
+
     }
 
-    console.log('Returning connected calendars:', calendars);
-    return calendars;
+
+
+    const loginRequest: PopupRequest = {
+
+      scopes: MS_SCOPE.split(' '),
+
+      prompt: 'select_account'
+
+    };
+
+    console.log("[handleMicrosoft] Login request configured:", loginRequest);
+
+
+
+    // Check for existing accounts
+
+    const accounts = msalInstance!.getAllAccounts();
+
+    console.log("[handleMicrosoft] Found existing accounts:", accounts.length);
+
+    if (accounts.length > 0) {
+
+      try {
+
+        console.log("[handleMicrosoft] Attempting silent token acquisition");
+
+        const silentRequest = {
+
+          scopes: MS_SCOPE.split(' '),
+
+          account: accounts[0]
+
+        };
+
+        const silentResponse = await msalInstance!.acquireTokenSilent(silentRequest);
+
+
+
+        const { user } = useAuthStore.getState();
+
+        if (user?.uid) {
+
+          console.log("[handleMicrosoft] Updating user's Microsoft connection status");
+
+          const userRef = doc(db, 'users', user.uid);
+
+          await updateDoc(userRef, {
+
+            isMicrosoftConnected: true
+
+          });
+
+          console.log("[handleMicrosoft] User's Microsoft connection status updated successfully");
+
+        }
+
+        console.log("[handleMicrosoft] Silent token acquisition successful");
+
+        return silentResponse;
+
+      } catch (silentError) {
+
+        console.warn("[handleMicrosoft] Silent token acquisition failed:", silentError);
+
+      }
+
+    }
+
+
+
+    // If no account or silent acquisition failed, do popup login
+
+    console.log("[handleMicrosoft] Initiating popup login");
+
+    const response = await msalInstance!.loginPopup(loginRequest);
+
+    console.log("[handleMicrosoft] Popup login successful, access token received:", !!response.accessToken);
+
+    if (response.accessToken) {
+
+      const { user } = useAuthStore.getState();
+
+      if (user?.uid) {
+
+        console.log("[handleMicrosoft] Updating user's Microsoft connection status");
+
+        const userRef = doc(db, 'users', user.uid);
+
+        await updateDoc(userRef, {
+
+          isMicrosoftConnected: true
+
+        });
+
+        console.log("[handleMicrosoft] User's Microsoft connection status updated successfully");
+
+      }
+
+    }
+
+    return response;
+
   } catch (error) {
-    console.error('Error getting connected calendars:', error);
+
+    console.error("[handleMicrosoft] Authentication error:", error);
+
     throw error;
+
   }
+
 }
 
-export async function fetchCalendarEvents(userId: string): Promise<any[]> {
-  try {
-    console.log('Fetching calendar events for user:', userId);
-    const token = await getAuth().currentUser?.getIdToken();
-    
-    if (!token) {
-      throw new Error('No authentication token available');
-    }
 
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/getCalendarEvents`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
+
+// Get access token (use this before making API calls)
+
+export async function getMicrosoftAccessToken() {
+
+  if (!msalInstance) {
+
+    return await initializeMsal();
+
+  }
+
+  const accounts = msalInstance.getAllAccounts();
+
+
+
+  if (accounts.length === 0) {
+
+    // No user signed in, need to login
+
+    return handleMicrosoft();
+
+  }
+
+
+
+  try {
+
+    const silentRequest = {
+
+      scopes: MS_SCOPE.split(' '),
+
+      account: accounts[0]
+
+    };
+
+    const response = await msalInstance.acquireTokenSilent(silentRequest);
+
+    return response.accessToken;
+
+  } catch (error) {
+
+    console.error('Error getting access token:', error);
+
+    // If silent token acquisition fails, fall back to interactive login
+
+    return handleMicrosoft();
+
+  }
+
+}
+
+
+
+// Update getMicrosoftCalendarEvents to ensure MSAL is initialized
+
+export async function getCalendarEvents({ google, microsoft }: { google: boolean, microsoft: boolean }) {
+
+
+
+  // Build query parameters based on connected calendars
+
+  const queryParams = new URLSearchParams();
+
+
+
+  if (google) {
+
+    queryParams.append('google', 'true');
+
+  }
+
+
+
+  if (microsoft) {
+
+    queryParams.append('microsoft', 'true');
+
+    const microsoftAccessToken = await getMicrosoftAccessToken();
+
+    console.log(queryParams.toString(), "queryParams");
+
+
+
+    return await serverFetch(`/get-events?${queryParams.toString()}`, {
+
+      customHeaders: {
+
+        'X-Microsoft-Token': `Bearer ${microsoftAccessToken}`
+
       }
+
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Calendar events fetch failed:', errorText);
-      throw new Error(`Failed to fetch calendar events: ${response.status} ${response.statusText}`);
+  }
+
+  console.log(queryParams.toString(), "queryParams");
+
+
+
+  // If only Google is connected or no calendars are connected
+
+  return await serverFetch(`/get-events?${queryParams.toString()}`);
+
+}
+
+
+
+export async function disconnectGoogle() {
+
+  try {
+
+    // Update local state if needed
+
+    // Update user's Microsoft connection status in Firestore
+
+    const { user } = useAuthStore.getState();
+
+    if (user?.uid) {
+
+      const userRef = doc(db, 'users', user.uid);
+
+      await updateDoc(userRef, {
+
+        isGoogleConnected: false,
+
+        googleRefreshToken: null
+
+      });
+
     }
 
-    const data = await response.json();
-    console.log('Calendar events fetched successfully:', data.events?.length || 0, 'events');
-    return data.events;
+    return true;
+
   } catch (error) {
-    console.error('Error fetching calendar events:', error);
+
+    console.error('Error disconnecting Google calendar:', error);
+
+    throw error;
+
+  }
+
+}
+
+
+
+export async function disconnectMicrosoft() {
+
+  try {
+
+    console.log("[disconnectMicrosoft] Starting Microsoft disconnect process");
+
+
+
+    if (!msalInstance) {
+
+      console.log("[disconnectMicrosoft] No MSAL instance found, initializing...");
+
+      await initializeMsal();
+
+    }
+
+
+
+    // Sign out from MSAL
+
+    const accounts = msalInstance?.getAllAccounts() || [];
+
+    console.log("[disconnectMicrosoft] Found accounts to disconnect:", accounts.length);
+
+
+
+    if (accounts.length > 0) {
+
+      console.log("[disconnectMicrosoft] Initiating logout popup");
+
+      await msalInstance?.logoutPopup({
+
+        account: accounts[0],
+
+        postLogoutRedirectUri: window.location.origin
+
+      });
+
+      console.log("[disconnectMicrosoft] Logout popup completed successfully");
+
+    }
+
+
+
+    // Update user's Microsoft connection status in Firestore
+
+    const { user } = useAuthStore.getState();
+
+    if (user?.uid) {
+      console.log("[disconnectMicrosoft] Updating user's connection status in Firestore");
+      const userRef = doc(db, 'users', user.uid);
+      await updateDoc(userRef, {
+        isMicrosoftConnected: false
+      });
+      console.log("[disconnectMicrosoft] User's connection status updated successfully");
+    }
+    return true;
+
+  } catch (error) {
+    console.error("[disconnectMicrosoft] Error during disconnect:", error);
     throw error;
   }
+
 }

@@ -13,8 +13,10 @@ import CategoryManager from '../components/categories/CategoryManager';
 import toast from 'react-hot-toast';
 import { Meeting } from '../types/meeting';
 import { useNotificationStore } from '../store/notificationStore';
-import NotificationBanner from '../components/NotificationBanner';
+// import NotificationBanner from '../components/NotificationBanner';
 import { db } from '../lib/firebase';
+import UpcomingMeetings from '../components/upcomingMeetings/upcomingMeetings';
+import { useConnectedCalendars } from '../hooks/useCalender';
 
 const postItColors = [
   'bg-yellow-100',
@@ -53,7 +55,7 @@ export default function Dashboard() {
   const [showViewPreferenceModal, setShowViewPreferenceModal] = useState(false);
   const [pendingViewMode, setPendingViewMode] = useState<ViewMode>('grid');
   const { setNotifications } = useNotificationStore();
-
+  const { connectedCalendars } = useConnectedCalendars(user?.uid);
   useEffect(() => {
     if (!user) return;
 
@@ -64,13 +66,13 @@ export default function Dashboard() {
       (snapshot) => {
         const meetingsData = snapshot.docs.map(doc => {
           const data = doc.data();
-          const createDate = data.createDate instanceof Timestamp ? 
-            data.createDate : 
+          const createDate = data.createDate instanceof Timestamp ?
+            data.createDate :
             Timestamp.now();
-          const updatedAt = data.updatedAt instanceof Timestamp ? 
-            data.updatedAt : 
+          const updatedAt = data.updatedAt instanceof Timestamp ?
+            data.updatedAt :
             Timestamp.now();
-            
+
           return {
             id: doc.id,
             ...data,
@@ -78,7 +80,7 @@ export default function Dashboard() {
             updatedAt
           };
         }) as Meeting[];
-        
+
         setMeetings(meetingsData);
         setLoading(false);
       },
@@ -145,7 +147,7 @@ export default function Dashboard() {
       collection(db, 'notifications'),
       where('isActive', '==', true)
     );
-  
+
     const unsubscribe = onSnapshot(
       notificationsQuery,
       (snapshot) => {
@@ -162,9 +164,9 @@ export default function Dashboard() {
         toast.error('Failed to load notifications');
       }
     );
-  
+
     return () => unsubscribe();
-  }, []); 
+  }, []);
 
   const handleDelete = async (meeting: Meeting) => {
     setDeletingMeeting(meeting);
@@ -173,7 +175,7 @@ export default function Dashboard() {
 
   const confirmDelete = async () => {
     if (!deletingMeeting) return;
-    
+
     setIsDeleting(true);
     try {
       await deleteMeeting(deletingMeeting.id);
@@ -228,14 +230,14 @@ export default function Dashboard() {
     const transcriptPreview = meeting.transcription || '';
     const summaryPreview = meeting.summary || '';
     const notesPreview = meeting.personalNotes || '';
-    
+
     let displayText = contentPreview;
-    
+
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const allContent = [contentPreview, transcriptPreview, summaryPreview, notesPreview].join(' ');
       const index = allContent.toLowerCase().indexOf(query);
-      
+
       if (index !== -1) {
         const start = Math.max(0, index - 50);
         const end = Math.min(allContent.length, index + query.length + 50);
@@ -244,8 +246,8 @@ export default function Dashboard() {
     }
 
     return searchQuery ? (
-      <div 
-        dangerouslySetInnerHTML={{ 
+      <div
+        dangerouslySetInnerHTML={{
           __html: getHighlightedText(displayText, searchQuery)
         }}
         className="line-clamp-3"
@@ -270,327 +272,331 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:justify-between sm:items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">My Meetings</h1>
-          <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-            <div className="flex space-x-4">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search meetings..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:text-white"
-                />
-                <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-              </div>
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={`px-3 py-2 border rounded-md flex items-center space-x-2 ${
-                  showFilters || selectedCategory
-                    ? 'border-indigo-500 text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/50'
-                    : 'border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
-                }`}
-              >
-                <Filter className="w-4 h-4" />
-                <span>Filter</span>
-              </button>
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => toggleSort('createDate')}
-                className={`px-3 py-2 border rounded-md flex items-center space-x-2 ${
-                  sortConfig.field === 'createDate'
-                    ? 'border-indigo-500 text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/50'
-                    : 'border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
-                }`}
-              >
-                <span>Date</span>
-                {sortConfig.field === 'createDate' && (
-                  sortConfig.direction === 'desc' ? (
-                    <SortDesc className="w-4 h-4" />
-                  ) : (
-                    <SortAsc className="w-4 h-4" />
-                  )
-                )}
-              </button>
-              <button
-                onClick={() => toggleSort('title')}
-                className={`px-3 py-2 border rounded-md flex items-center space-x-2 ${
-                  sortConfig.field === 'title'
-                    ? 'border-indigo-500 text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/50'
-                    : 'border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
-                }`}
-              >
-                <span>Title</span>
-                {sortConfig.field === 'title' && (
-                  sortConfig.direction === 'desc' ? (
-                    <SortDesc className="w-4 h-4" />
-                  ) : (
-                    <SortAsc className="w-4 h-4" />
-                  )
-                )}
-              </button>
-              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-1 flex items-center bg-white dark:bg-gray-800 shadow-sm">
-                <NoteSizeToggle />
-                <button
-                  onClick={() => {
-                    setViewMode('calendar');
-                    setPendingViewMode('calendar');
-                    setShowViewPreferenceModal(true);
-                  }}
-                  className={`p-1.5 rounded transition-colors ${
-                    viewMode === 'calendar'
-                      ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400'
-                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-                  }`}
-                  title="Calendar View"
-                >
-                  <Calendar className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => {
-                    setViewMode('grid');
-                    setPendingViewMode('grid');
-                    setShowViewPreferenceModal(true);
-                  }}
-                  className={`p-1.5 rounded ${
-                    viewMode === 'grid'
-                      ? 'bg-indigo-100 text-indigo-600'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                  title="Grid View"
-                >
-                  <Grid className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => {
-                    setViewMode('list');
-                    setPendingViewMode('list');
-                    setShowViewPreferenceModal(true);
-                  }}
-                  className={`p-1.5 rounded ${
-                    viewMode === 'list'
-                      ? 'bg-indigo-100 text-indigo-600'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                  title="List View"
-                >
-                  <List className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setShowCategoryModal(true)}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                <Tag className="w-4 h-4 mr-2" />
-                Categories
-              </button>
-              <button
-                onClick={() => navigate('/meeting/new')}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                <PlusCircle className="w-4 h-4 mr-2" />
-                New Meeting
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {showFilters && (
-          <div className="mb-6 bg-white p-4 rounded-lg shadow-sm">
-            <h3 className="text-sm font-medium text-gray-700 mb-3">Filter by Category</h3>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setSelectedCategory('')}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium ${
-                  !selectedCategory
-                    ? 'bg-indigo-100 text-indigo-700'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                All
-              </button>
-              {categories.map((category) => (
-                <button
-                  key={category.id}
-                  onClick={() => setSelectedCategory(category.id)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium ${
-                    selectedCategory === category.id
-                      ? 'bg-indigo-100 text-indigo-700'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {category.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {filteredMeetings.length === 0 ? (
-          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-            {searchQuery || selectedCategory ? (
-              <>
-                <h3 className="text-lg font-medium text-gray-900">No matches found</h3>
-                <p className="mt-1 text-gray-500">Try adjusting your filters</p>
-              </>
-            ) : (
-              <>
-                <h3 className="text-lg font-medium text-gray-900">No meetings yet</h3>
-                <p className="mt-1 text-gray-500">Get started by creating a new meeting</p>
-              </>
-            )}
-          </div>
-        ) : viewMode === 'calendar' ? (
-          <div className="transition-opacity duration-300 ease-in-out">
-            <CalendarView meetings={filteredMeetings} />
-          </div>
-        ) : viewMode === 'grid' ? (
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredMeetings.map((meeting, index) => (
-              <div
-                key={meeting.id}
-                className={`${postItColors[index % postItColors.length]} rounded-lg transform hover:-rotate-1 transition-all duration-200 relative`}
-                style={{
-                  boxShadow: '2px 3px 7px rgba(0,0,0,0.1)',
-                  height: noteSize === 'normal' ? '220px' : '110px',
-                  width: '100%'
-                }}
-              >
-                <div 
-                  className="p-6 cursor-pointer h-full flex flex-col"
-                  onClick={() => navigate(`/meeting/${meeting.id}`)}
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <h3 className={`${noteSize === 'normal' ? 'text-lg' : 'text-base'} font-medium text-gray-900 line-clamp-2 flex-1 pr-8`}>
-                      {searchQuery ? (
-                        <div dangerouslySetInnerHTML={{ 
-                          __html: getHighlightedText(meeting.title, searchQuery)
-                        }} className="line-clamp-2" />
+      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Main Content */}
+          <div className="flex-1">
+            <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:justify-between sm:items-center mb-8">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">My Meetings</h1>
+              <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                <div className="flex space-x-4">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search meetings..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:text-white"
+                    />
+                    <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                  </div>
+                  <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={`px-3 py-2 border rounded-md flex items-center space-x-2 ${showFilters || selectedCategory
+                        ? 'border-indigo-500 text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/50'
+                        : 'border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                      }`}
+                  >
+                    <Filter className="w-4 h-4" />
+                    <span>Filter</span>
+                  </button>
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => toggleSort('createDate')}
+                    className={`px-3 py-2 border rounded-md flex items-center space-x-2 ${sortConfig.field === 'createDate'
+                        ? 'border-indigo-500 text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/50'
+                        : 'border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                      }`}
+                  >
+                    <span>Date</span>
+                    {sortConfig.field === 'createDate' && (
+                      sortConfig.direction === 'desc' ? (
+                        <SortDesc className="w-4 h-4" />
                       ) : (
-                        meeting.title
-                      )}
-                    </h3>
+                        <SortAsc className="w-4 h-4" />
+                      )
+                    )}
+                  </button>
+                  <button
+                    onClick={() => toggleSort('title')}
+                    className={`px-3 py-2 border rounded-md flex items-center space-x-2 ${sortConfig.field === 'title'
+                        ? 'border-indigo-500 text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/50'
+                        : 'border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                      }`}
+                  >
+                    <span>Title</span>
+                    {sortConfig.field === 'title' && (
+                      sortConfig.direction === 'desc' ? (
+                        <SortDesc className="w-4 h-4" />
+                      ) : (
+                        <SortAsc className="w-4 h-4" />
+                      )
+                    )}
+                  </button>
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-1 flex items-center bg-white dark:bg-gray-800 shadow-sm">
+                    <NoteSizeToggle />
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(meeting);
+                      onClick={() => {
+                        setViewMode('calendar');
+                        setPendingViewMode('calendar');
+                        setShowViewPreferenceModal(true);
                       }}
-                      className="p-1 text-gray-400 hover:text-red-600 rounded-full hover:bg-white/50 flex-shrink-0 absolute top-4 right-4"
+                      className={`p-1.5 rounded transition-colors ${viewMode === 'calendar'
+                          ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400'
+                          : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                        }`}
+                      title="Calendar View"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Calendar className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setViewMode('grid');
+                        setPendingViewMode('grid');
+                        setShowViewPreferenceModal(true);
+                      }}
+                      className={`p-1.5 rounded ${viewMode === 'grid'
+                          ? 'bg-indigo-100 text-indigo-600'
+                          : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      title="Grid View"
+                    >
+                      <Grid className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setViewMode('list');
+                        setPendingViewMode('list');
+                        setShowViewPreferenceModal(true);
+                      }}
+                      className={`p-1.5 rounded ${viewMode === 'list'
+                          ? 'bg-indigo-100 text-indigo-600'
+                          : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      title="List View"
+                    >
+                      <List className="w-4 h-4" />
                     </button>
                   </div>
-
-                  {meeting.categoryId && (
-                    <div 
-                      className={`inline-flex items-center px-2 ${noteSize === 'normal' ? 'py-1' : 'py-0.5'} rounded-full text-xs font-medium mb-2`}
-                      style={{
-                        backgroundColor: `${getCategoryColor(meeting.categoryId)}20`,
-                        color: getCategoryColor(meeting.categoryId)
-                      }}
-                    >
-                      <Tag className="w-3 h-3 mr-1" />
-                      {categories.find(cat => cat.id === meeting.categoryId)?.name || 'Uncategorized'}
-                    </div>
-                  )}
-
-                  <div className={`space-y-${noteSize === 'normal' ? '3' : '1'} ${noteSize === 'normal' ? 'text-sm' : 'text-xs'} text-gray-600 flex-1 overflow-hidden`}>
-                    <div className="flex items-center">
-                      <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
-                      <span className="truncate">
-                        {formatDate(meeting.createDate)}
-                      </span>
-                    </div>
-                    <div className="flex items-center">
-                      <Users className="w-4 h-4 mr-2 flex-shrink-0" />
-                      <span>
-                        {meeting.participants?.length || 0} participants
-                      </span>
-                    </div>
-                    <div className="flex items-start">
-                      <FileText className="w-4 h-4 mr-2 mt-1 flex-shrink-0" />
-                      <div className="line-clamp-2 break-words">
-                        {renderContent(meeting)}
-                      </div>
-                    </div>
-                  </div>
                 </div>
-                <div 
-                  className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-b from-transparent to-black/5 rounded-b-lg"
-                  style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)' }}
-                />
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setShowCategoryModal(true)}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    <Tag className="w-4 h-4 mr-2" />
+                    Categories
+                  </button>
+                  <button
+                    onClick={() => navigate('/meeting/new')}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    <PlusCircle className="w-4 h-4 mr-2" />
+                    New Meeting
+                  </button>
+                </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {filteredMeetings.map((meeting) => (
-              <div
-                key={meeting.id}
-                className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
-              >
-                <div className="p-4 sm:p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <h3 
-                            className="text-lg font-medium text-gray-900 truncate cursor-pointer hover:text-indigo-600"
-                            onClick={() => navigate(`/meeting/${meeting.id}`)}
-                          >
-                            {searchQuery ? (
-                              <div dangerouslySetInnerHTML={{ 
-                                __html: getHighlightedText(meeting.title, searchQuery)
-                              }} />
-                            ) : (
-                              meeting.title
-                            )}
-                          </h3>
-                          {meeting.categoryId && (
-                            <div 
-                              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                              style={{
-                                backgroundColor: `${getCategoryColor(meeting.categoryId)}20`,
-                                color: getCategoryColor(meeting.categoryId)
-                              }}
-                            >
-                              <Tag className="w-3 h-3 mr-1" />
-                              {categories.find(cat => cat.id === meeting.categoryId)?.name || 'Uncategorized'}
-                            </div>
+            </div>
+
+            {showFilters && (
+              <div className="mb-6 bg-white p-4 rounded-lg shadow-sm">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Filter by Category</h3>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setSelectedCategory('')}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium ${!selectedCategory
+                        ? 'bg-indigo-100 text-indigo-700'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                  >
+                    All
+                  </button>
+                  {categories.map((category) => (
+                    <button
+                      key={category.id}
+                      onClick={() => setSelectedCategory(category.id)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium ${selectedCategory === category.id
+                          ? 'bg-indigo-100 text-indigo-700'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                    >
+                      {category.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {filteredMeetings.length === 0 ? (
+              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                {searchQuery || selectedCategory ? (
+                  <>
+                    <h3 className="text-lg font-medium text-gray-900">No matches found</h3>
+                    <p className="mt-1 text-gray-500">Try adjusting your filters</p>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-medium text-gray-900">No meetings yet</h3>
+                    <p className="mt-1 text-gray-500">Get started by creating a new meeting</p>
+                  </>
+                )}
+              </div>
+            ) : viewMode === 'calendar' ? (
+              <div className="transition-opacity duration-300 ease-in-out">
+                <CalendarView meetings={filteredMeetings} />
+              </div>
+            ) : viewMode === 'grid' ? (
+              <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {filteredMeetings.map((meeting, index) => (
+                  <div
+                    key={meeting.id}
+                    className={`${postItColors[index % postItColors.length]} rounded-lg transform hover:-rotate-1 transition-all duration-200 relative`}
+                    style={{
+                      boxShadow: '2px 3px 7px rgba(0,0,0,0.1)',
+                      height: noteSize === 'normal' ? '220px' : '110px',
+                      width: '100%'
+                    }}
+                  >
+                    <div
+                      className="p-6 cursor-pointer h-full flex flex-col"
+                      onClick={() => navigate(`/meeting/${meeting.id}`)}
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <h3 className={`${noteSize === 'normal' ? 'text-lg' : 'text-base'} font-medium text-gray-900 line-clamp-2 flex-1 pr-8`}>
+                          {searchQuery ? (
+                            <div dangerouslySetInnerHTML={{
+                              __html: getHighlightedText(meeting.title, searchQuery)
+                            }} className="line-clamp-2" />
+                          ) : (
+                            meeting.title
                           )}
-                        </div>
+                        </h3>
                         <button
-                          onClick={() => handleDelete(meeting)}
-                          className="ml-4 p-1 text-gray-400 hover:text-red-600 rounded-full"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(meeting);
+                          }}
+                          className="p-1 text-gray-400 hover:text-red-600 rounded-full hover:bg-white/50 flex-shrink-0 absolute top-4 right-4"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                      <div className="mt-1 flex flex-col sm:flex-row sm:flex-wrap sm:space-x-6">
-                        <div className="mt-2 flex items-center text-sm text-gray-500">
-                          <Calendar className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
-                          {formatDate(meeting.createDate)}
+
+                      {meeting.categoryId && (
+                        <div
+                          className={`inline-flex items-center px-2 ${noteSize === 'normal' ? 'py-1' : 'py-0.5'} rounded-full text-xs font-medium mb-2`}
+                          style={{
+                            backgroundColor: `${getCategoryColor(meeting.categoryId)}20`,
+                            color: getCategoryColor(meeting.categoryId)
+                          }}
+                        >
+                          <Tag className="w-3 h-3 mr-1" />
+                          {categories.find(cat => cat.id === meeting.categoryId)?.name || 'Uncategorized'}
                         </div>
-                        <div className="mt-2 flex items-center text-sm text-gray-500">
-                          <Users className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
-                          {meeting.participants?.length || 0} participants
+                      )}
+
+                      <div className={`space-y-${noteSize === 'normal' ? '3' : '1'} ${noteSize === 'normal' ? 'text-sm' : 'text-xs'} text-gray-600 flex-1 overflow-hidden`}>
+                        <div className="flex items-center">
+                          <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
+                          <span className="truncate">
+                            {formatDate(meeting.createDate)}
+                          </span>
+                        </div>
+                        <div className="flex items-center">
+                          <Users className="w-4 h-4 mr-2 flex-shrink-0" />
+                          <span>
+                            {meeting.participants?.length || 0} participants
+                          </span>
+                        </div>
+                        <div className="flex items-start">
+                          <FileText className="w-4 h-4 mr-2 mt-1 flex-shrink-0" />
+                          <div className="line-clamp-2 break-words">
+                            {renderContent(meeting)}
+                          </div>
                         </div>
                       </div>
-                      <div className="mt-2 text-sm text-gray-500">
-                        {renderContent(meeting)}
+                    </div>
+                    <div
+                      className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-b from-transparent to-black/5 rounded-b-lg"
+                      style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)' }}
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredMeetings.map((meeting) => (
+                  <div
+                    key={meeting.id}
+                    className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+                  >
+                    <div className="p-4 sm:p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <h3
+                                className="text-lg font-medium text-gray-900 truncate cursor-pointer hover:text-indigo-600"
+                                onClick={() => navigate(`/meeting/${meeting.id}`)}
+                              >
+                                {searchQuery ? (
+                                  <div dangerouslySetInnerHTML={{
+                                    __html: getHighlightedText(meeting.title, searchQuery)
+                                  }} />
+                                ) : (
+                                  meeting.title
+                                )}
+                              </h3>
+                              {meeting.categoryId && (
+                                <div
+                                  className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                                  style={{
+                                    backgroundColor: `${getCategoryColor(meeting.categoryId)}20`,
+                                    color: getCategoryColor(meeting.categoryId)
+                                  }}
+                                >
+                                  <Tag className="w-3 h-3 mr-1" />
+                                  {categories.find(cat => cat.id === meeting.categoryId)?.name || 'Uncategorized'}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleDelete(meeting)}
+                              className="ml-4 p-1 text-gray-400 hover:text-red-600 rounded-full"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="mt-1 flex flex-col sm:flex-row sm:flex-wrap sm:space-x-6">
+                            <div className="mt-2 flex items-center text-sm text-gray-500">
+                              <Calendar className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
+                              {formatDate(meeting.createDate)}
+                            </div>
+                            <div className="mt-2 flex items-center text-sm text-gray-500">
+                              <Users className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
+                              {meeting.participants?.length || 0} participants
+                            </div>
+                          </div>
+                          <div className="mt-2 text-sm text-gray-500">
+                            {renderContent(meeting)}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        )}
+
+          {/* Sidebar */}
+          <div className={`lg:w-80 flex-shrink-0 ${connectedCalendars.length === 0 ? 'hidden' : ''}`}>
+            <div className="sticky top-8">
+              <UpcomingMeetings />
+            </div>
+          </div>
+        </div>
 
         {/* View Preference Modal */}
         <ViewPreferenceModal
@@ -634,6 +640,7 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+  
 
         {/* Category Management Modal */}
         {showCategoryModal && (

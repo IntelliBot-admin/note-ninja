@@ -1,105 +1,13 @@
-import { useEffect, useState } from 'react';
 import { Calendar, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
-import { CalendarProvider } from '../../types/calendar';
-import { getConnectedCalendars, initGoogleAuth, initMicrosoftAuth, handleOAuthCallback } from '../../utils/calendarAuth';
-import toast from 'react-hot-toast';
+import {  handleGoogle, handleMicrosoft, disconnectGoogle, disconnectMicrosoft } from '../../utils/calendarAuth';
+
+import { useConnectedCalendars } from '../../hooks/useCalender';
 
 export default function CalendarSettings() {
   const { user } = useAuthStore();
-  const [connectedCalendars, setConnectedCalendars] = useState<CalendarProvider[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { connectedCalendars, loading } = useConnectedCalendars(user?.uid);
 
-  useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    const loadCalendars = async () => {
-      try {
-        const calendars = await getConnectedCalendars(user.uid);
-        console.log('Loaded calendars:', calendars);
-        setConnectedCalendars(calendars);
-      } catch (error) {
-        console.error('Error loading calendars:', error);
-        toast.error('Failed to load connected calendars');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadCalendars();
-  }, [user]);
-
-  const handleGoogleConnect = async () => {
-    try {
-      await initGoogleAuth();
-    } catch (error) {
-      console.error('Error connecting Google Calendar:', error);
-      toast.error('Failed to connect Google Calendar');
-    }
-  };
-
-  const handleMicrosoftConnect = async () => {
-    try {
-      console.log('Initiating Microsoft Calendar connection...');
-      await initMicrosoftAuth();
-    } catch (error) {
-      console.error('Error connecting Microsoft Calendar:', error);
-      toast.error('Failed to connect Microsoft Calendar');
-    }
-  };
-
-  useEffect(() => {
-    // Check URL for OAuth callback
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    const error = urlParams.get('error');
-    const state = urlParams.get('state');
-    console.log('OAuth callback params:', { code, error, state });
-
-    if (error) {
-      console.error('OAuth error:', error);
-      toast.error('Failed to connect calendar: ' + error);
-      return;
-    }
-
-    if (code) {
-      const handleCallback = async () => {
-        try {
-          setLoading(true);
-          // Determine provider from URL or state
-          const provider = state === 'microsoft' ? 'microsoft' : 'google';
-          console.log('Processing OAuth callback for provider:', provider);
-          
-          await handleOAuthCallback(code, provider);
-          toast.success('Calendar connected successfully!');
-          
-          // Force reload calendar data after a short delay to ensure Firestore is updated
-          setTimeout(async () => {
-            if (user) {
-              const calendars = await getConnectedCalendars(user.uid);
-              console.log('Updated calendar list:', calendars);
-              setConnectedCalendars(calendars);
-            }
-          }, 1000);
-          
-          // Clear URL parameters
-          window.history.replaceState({}, '', window.location.pathname);
-        } catch (error) {
-          console.error('Error handling OAuth callback:', error);
-          toast.error('Failed to complete calendar connection');
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      if (user) {
-        handleCallback();
-      }
-    }
-  }, [user, window.location.search]);
 
   if (loading) {
     return (
@@ -108,6 +16,24 @@ export default function CalendarSettings() {
       </div>
     );
   }
+
+  const handleDisconnectGoogle = async () => {
+    try {
+      await disconnectGoogle();
+      // The useConnectedCalendars hook should automatically refresh
+    } catch (error) {
+      console.error('Failed to disconnect Google calendar:', error);
+    }
+  };
+
+  const handleDisconnectMicrosoft = async () => {
+    try {
+      await disconnectMicrosoft();
+      // The useConnectedCalendars hook should automatically refresh
+    } catch (error) {
+      console.error('Failed to disconnect Microsoft calendar:', error);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -141,12 +67,23 @@ export default function CalendarSettings() {
                 )}
               </div>
             </div>
-            <button
-              onClick={handleGoogleConnect}
-              className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
-            >
-              {connectedCalendars.find(c => c.type === 'google') ? 'Reconnect' : 'Connect'}
-            </button>
+            <div className="flex items-center space-x-2">
+              {connectedCalendars.find(c => c.type === 'google') ? (
+                <button
+                  onClick={handleDisconnectGoogle}
+                  className="px-3 py-1.5 text-sm font-medium text-red-600 border border-red-600 rounded-md hover:bg-red-50"
+                >
+                  Disconnect
+                </button>
+              ) : (
+                <button
+                  onClick={handleGoogle}
+                  className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
+                >
+                  Connect
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -166,12 +103,23 @@ export default function CalendarSettings() {
                 )}
               </div>
             </div>
-            <button
-              onClick={handleMicrosoftConnect}
-              className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
-            >
-              {connectedCalendars.find(c => c.type === 'microsoft') ? 'Reconnect' : 'Connect'}
-            </button>
+            <div className="flex items-center space-x-2">
+              {connectedCalendars.find(c => c.type === 'microsoft') ? (
+                <button
+                  onClick={handleDisconnectMicrosoft}
+                  className="px-3 py-1.5 text-sm font-medium text-red-600 border border-red-600 rounded-md hover:bg-red-50"
+                >
+                  Disconnect
+                </button>
+              ) : (
+                <button
+                  onClick={handleMicrosoft}
+                  className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
+                >
+                  Connect
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

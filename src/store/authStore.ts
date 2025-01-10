@@ -16,7 +16,7 @@ import { DEFAULT_CATEGORIES } from '../types/category';
 import { SignupFormData } from '../types/auth';
 import toast from 'react-hot-toast';
 import { serverPost } from '../utils/api';
-import { createCheckoutSession, planMap } from '../lib/stripe';
+// import { createCheckoutSession, planMap } from '../lib/stripe';
 
 interface AuthState {
   user: User | null;
@@ -81,7 +81,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       // Create user document with Stripe customer ID
       const userData = {
         email: user.email,
-        customerId, // Include Stripe customer ID from the start
+        customerId, 
         plan: 'free',
         subscriptionId: null,
         firstName: additionalData?.firstName || '',
