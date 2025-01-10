@@ -137,8 +137,6 @@ const MSAL_CONFIG = {
 
 export async function initializeMsal() {
 
-
-
   if (!isInitialized) {
 
     const instance = new PublicClientApplication(MSAL_CONFIG);
@@ -152,8 +150,6 @@ export async function initializeMsal() {
     return instance;
 
   }
-
-
 
   return msalInstance;
 
@@ -169,17 +165,11 @@ export async function handleMicrosoft() {
 
     console.log("[handleMicrosoft] Starting Microsoft authentication flow");
 
-    // Ensure MSAL is initialized before using it
-
-    if (!msalInstance) {
-
-      console.log("[handleMicrosoft] No MSAL instance found, initializing...");
-
-      await initializeMsal();
-
+    // Initialize MSAL and ensure we have an instance
+    const instance = await initializeMsal();
+    if (!instance) {
+      throw new Error("Failed to initialize MSAL");
     }
-
-
 
     const loginRequest: PopupRequest = {
 
@@ -195,7 +185,7 @@ export async function handleMicrosoft() {
 
     // Check for existing accounts
 
-    const accounts = msalInstance!.getAllAccounts();
+    const accounts = instance.getAllAccounts();
 
     console.log("[handleMicrosoft] Found existing accounts:", accounts.length);
 
@@ -213,7 +203,7 @@ export async function handleMicrosoft() {
 
         };
 
-        const silentResponse = await msalInstance!.acquireTokenSilent(silentRequest);
+        const silentResponse = await instance.acquireTokenSilent(silentRequest);
 
 
 
@@ -253,7 +243,7 @@ export async function handleMicrosoft() {
 
     console.log("[handleMicrosoft] Initiating popup login");
 
-    const response = await msalInstance!.loginPopup(loginRequest);
+    const response = await instance.loginPopup(loginRequest);
 
     console.log("[handleMicrosoft] Popup login successful, access token received:", !!response.accessToken);
 
@@ -296,51 +286,31 @@ export async function handleMicrosoft() {
 // Get access token (use this before making API calls)
 
 export async function getMicrosoftAccessToken() {
-
-  if (!msalInstance) {
-
-    await initializeMsal();
-
+  // Get a guaranteed instance
+  const instance = await initializeMsal();
+  if (!instance) {
+    throw new Error("Failed to initialize MSAL");
   }
 
-  const accounts = msalInstance!.getAllAccounts();
-
-
+  const accounts = instance.getAllAccounts();
 
   if (accounts.length === 0) {
-
     // No user signed in, need to login
-
     return handleMicrosoft();
-
   }
-
-
 
   try {
-
     const silentRequest = {
-
       scopes: MS_SCOPE.split(' '),
-
       account: accounts[0]
-
     };
-
-    const response = await msalInstance!.acquireTokenSilent(silentRequest);
-
+    const response = await instance.acquireTokenSilent(silentRequest);
     return response.accessToken;
-
   } catch (error) {
-
     console.error('Error getting access token:', error);
-
     // If silent token acquisition fails, fall back to interactive login
-
     return handleMicrosoft();
-
   }
-
 }
 
 
