@@ -299,11 +299,11 @@ export async function getMicrosoftAccessToken() {
 
   if (!msalInstance) {
 
-    return await initializeMsal();
+    await initializeMsal();
 
   }
 
-  const accounts = msalInstance.getAllAccounts();
+  const accounts = msalInstance!.getAllAccounts();
 
 
 
@@ -327,7 +327,7 @@ export async function getMicrosoftAccessToken() {
 
     };
 
-    const response = await msalInstance.acquireTokenSilent(silentRequest);
+    const response = await msalInstance!.acquireTokenSilent(silentRequest);
 
     return response.accessToken;
 
