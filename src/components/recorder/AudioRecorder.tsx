@@ -89,6 +89,7 @@ export default function AudioRecorder({
   const [showDeviceSelect, setShowDeviceSelect] = useState(false);
   const [audioInputDevices, setAudioInputDevices] = useState<MediaDeviceInfo[]>([]);
   const [audioOutputDevices, setAudioOutputDevices] = useState<MediaDeviceInfo[]>([]);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const { setShowForm, setFormData } = useActionItemStore();
   const { setActiveTab: setActiveTabNavigation } = useNavigationStore();
@@ -206,6 +207,7 @@ export default function AudioRecorder({
   };
 
   async function downloadRecording() {
+    setIsDownloading(true);
     try {
       const storage = getStorage();
       const url = audioUrl || initialAudioUrl;
@@ -214,18 +216,13 @@ export default function AudioRecorder({
         throw new Error('No audio URL available');
       }
 
-      // Get the part after '/o/' and remove query parameters
       const pathPart = url.split('/o/')[1];
       const path = decodeURIComponent(pathPart.split('?')[0]);
       const audioRef = ref(storage, path);
 
-      // Get the blob directly instead of the download URL
       const blob = await getBlob(audioRef);
-
-      // Create object URL from blob
       const blobUrl = URL.createObjectURL(blob);
 
-      // Create and trigger download
       const link = document.createElement('a');
       link.href = blobUrl;
       link.download = `recording_${Date.now()}.mp3`;
@@ -233,12 +230,13 @@ export default function AudioRecorder({
       link.click();
       document.body.removeChild(link);
 
-      // Clean up the blob URL after download starts
       setTimeout(() => URL.revokeObjectURL(blobUrl), 300);
 
     } catch (error) {
       console.error('Error downloading recording:', error);
       toast.error('Failed to download recording');
+    } finally {
+      setIsDownloading(false);
     }
   }
 
@@ -413,9 +411,17 @@ export default function AudioRecorder({
               </div>
               <button
                 onClick={downloadRecording}
-                className="flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                disabled={isDownloading}
+                className="flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Download Recording
+                {isDownloading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Downloading...
+                  </>
+                ) : (
+                  'Download Recording'
+                )}
               </button>
             </div>
           )}

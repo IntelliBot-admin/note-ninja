@@ -86,7 +86,7 @@ export default function AudioUploader({
   };
 
   useEffect(() => {
-    setMAX_FILE_SIZE(planName === 'Free' ? 5 * 1024 * 1024 : 150 * 1024 * 1024);
+    setMAX_FILE_SIZE(planName === 'Free' ? 5 * 1024 * 1024 : 500 * 1024 * 1024);
   }, [planName]);
 
   useEffect(() => {
@@ -98,6 +98,9 @@ export default function AudioUploader({
     const audioFile = acceptedFiles[0];
     console.log("audioFile.size", audioFile.size);
     console.log("MAX_FILE_SIZE", MAX_FILE_SIZE);
+
+    console.log(audioFile.size > MAX_FILE_SIZE,"audio file size exceeds max file size");
+    
 
     if (!audioFile) return;
 
