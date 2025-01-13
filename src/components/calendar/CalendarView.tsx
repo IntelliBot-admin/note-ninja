@@ -35,8 +35,8 @@ export default function CalendarView({ meetings }: CalendarViewProps) {
   };
 
   const getWeeks = () => {
-    const weeks = [];
-    let currentWeek = [];
+    const weeks: (Date | null)[][] = [];
+    let currentWeek: (Date | null)[] = [];
 
     // Add empty days for the first week
     const firstDay = days[0].getDay();

@@ -425,7 +425,7 @@ export default function AudioUploader({
                         <MindMap summary={summary} meetingType={selectedMeetingType} />
                       ) : (
                         <div className="flex gap-6 h-[calc(500px-4rem)]">
-                          <div className="flex-1 overflow-y-auto pr-6">
+                          <div className="flex-1 overflow-y-auto pr-6 pb-6">
                             <div className="prose prose-sm max-w-none">
                               <div dangerouslySetInnerHTML={{ __html: summary }} />
                             </div>

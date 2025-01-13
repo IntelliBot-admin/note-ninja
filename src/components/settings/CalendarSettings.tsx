@@ -3,11 +3,37 @@ import { useAuthStore } from '../../store/authStore';
 import {  handleGoogle, handleMicrosoft, disconnectGoogle, disconnectMicrosoft } from '../../utils/calendarAuth';
 
 import { useConnectedCalendars } from '../../hooks/useCalender';
+import { useSearchParams } from 'react-router-dom';
+import { useEffect } from 'react';
+import toast from 'react-hot-toast';
+
 
 export default function CalendarSettings() {
   const { user } = useAuthStore();
   const { connectedCalendars, loading } = useConnectedCalendars(user?.uid);
+  const [searchParams] = useSearchParams();
 
+  useEffect(() => {
+    const error = searchParams.get('error');
+    const success = searchParams.get('success');
+
+    if (error) {
+      const errorMessages: { [key: string]: string } = {
+        'token_exchange_failed': 'Failed to connect to Microsoft calendar. Please try again.',
+        'no_code_or_state': 'Authentication failed. Missing required parameters.',
+        'invalid_state': 'Invalid authentication state. Please try again.',
+        'no_user_id': 'User ID not found. Please try again.',
+        'server_error': 'Server error occurred. Please try again later.',
+        'default': 'An error occurred while connecting your calendar.'
+      };
+
+      toast.error(errorMessages[error] || errorMessages.default);
+    }
+
+    if (success) {
+      toast.success('Calendar connected successfully!');
+    }
+  }, [searchParams, toast]);
 
   if (loading) {
     return (
@@ -42,13 +68,6 @@ export default function CalendarSettings() {
         Connect your calendars to automatically sync meeting details
       </p>
       
-      {/* Debug info - remove in production */}
-      <div className="text-xs text-gray-400 mb-4">
-        Connected calendars: {connectedCalendars.length}
-        {connectedCalendars.map((cal, i) => (
-          <div key={i}>{cal.type}: {cal.email}</div>
-        ))}
-      </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Google Calendar */}
@@ -58,13 +77,13 @@ export default function CalendarSettings() {
               <Calendar className="w-6 h-6 text-red-500" />
               <div>
                 <h4 className="font-medium">Google Calendar</h4>
-                {connectedCalendars.find(c => c.type === 'google') ? (
+                {/* {connectedCalendars.find(c => c.type === 'google') ? (
                   <p className="text-sm font-medium text-green-600">
                     Connected to {connectedCalendars.find(c => c.type === 'google')?.email}
                   </p>
                 ) : (
                   <p className="text-sm text-gray-500">Not connected</p>
-                )}
+                )} */}
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -94,13 +113,13 @@ export default function CalendarSettings() {
               <Calendar className="w-6 h-6 text-blue-500" />
               <div>
                 <h4 className="font-medium">Microsoft Calendar</h4>
-                {connectedCalendars.find(c => c.type === 'microsoft') ? (
+                {/* {connectedCalendars.find(c => c.type === 'microsoft') ? (
                   <p className="text-sm font-medium text-green-600">
                     Connected to {connectedCalendars.find(c => c.type === 'microsoft')?.email}
                   </p>
                 ) : (
                   <p className="text-sm text-gray-500">Not connected</p>
-                )}
+                )} */}
               </div>
             </div>
             <div className="flex items-center space-x-2">

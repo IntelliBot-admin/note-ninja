@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { format, parseISO, isToday, isTomorrow } from 'date-fns';
-import { getCalendarEvents, initializeMsal } from '../../utils/calendarAuth';
+import { getCalendarEvents } from '../../utils/calendarAuth';
 import { useConnectedCalendars } from '../../hooks/useCalender';
 import { useAuthStore } from '../../store/authStore';
 import { Calendar, Loader2, MapPin, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useMsalStore } from '../../store/msalStore';
+// import { useMsalStore } from '../../store/msalStore';
 import { BsMicrosoftTeams } from 'react-icons/bs';
 import { SiGooglemeet } from 'react-icons/si';
 import { useMeetingStore } from '../../store/meetingStore';
@@ -30,9 +30,10 @@ export default function UpcomingMeetings() {
    const [loading, setLoading] = useState(true);
    const { user } = useAuthStore();
    const { connectedCalendars } = useConnectedCalendars(user?.uid);
-   const { isInitialized } = useMsalStore.getState();
+   // const { isInitialized } = useMsalStore.getState();
    const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
    const { addMeeting } = useMeetingStore();
+   const [isError, setIsError] = useState(false);
 
    const handleAddToCalendar = async (event: CalendarEvent) => {
       if (!user?.uid) {
@@ -66,42 +67,43 @@ export default function UpcomingMeetings() {
 
    useEffect(() => {
       async function fetchEvents() {
+         setLoading(true);
+         setIsError(false);
+
          try {
             const hasGoogle = connectedCalendars.some(cal => cal.type === 'google');
             const hasMicrosoft = connectedCalendars.some(cal => cal.type === 'microsoft');
+
+            if (!hasGoogle && !hasMicrosoft) {
+               setEvents([]);
+               return;
+            }
 
             const response = await getCalendarEvents({
                google: hasGoogle,
                microsoft: hasMicrosoft
             });
 
-            // Sort events by start time
             const sortedEvents = response.events.sort((a: any, b: any) =>
                new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
             );
 
             setEvents(sortedEvents);
-            console.log('events', sortedEvents);
          } catch (error) {
             console.error('Error fetching calendar events:', error);
+            setIsError(true);
             toast.error('Failed to load calendar events');
          } finally {
             setLoading(false);
          }
       }
 
-      if (!isInitialized) {
-         initializeMsal();
-      }
-
       if (connectedCalendars.length > 0) {
-         console.log('fetching events');
-
          fetchEvents();
       } else {
          setLoading(false);
       }
-   }, [connectedCalendars, isInitialized]);
+   }, [connectedCalendars]);
 
    const formatEventDate = (dateStr: string) => {
       const date = parseISO(dateStr);
@@ -127,8 +129,43 @@ export default function UpcomingMeetings() {
 
    if (loading) {
       return (
-         <div className="flex items-center justify-center p-4">
-            <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+         <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+               <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                     Upcoming Meetings
+                  </h2>
+               </div>
+            </div>
+            <div className="p-8">
+               <div className="flex flex-col items-center justify-center space-y-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                     Loading your calendar events...
+                  </p>
+               </div>
+            </div>
+         </div>
+      );
+   }
+
+   if (isError) {
+      return (
+         <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+               <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                     Upcoming Meetings
+                  </h2>
+               </div>
+            </div>
+            <div className="p-8">
+               <div className="flex flex-col items-center justify-center space-y-3">
+                  <p className="text-sm text-red-500 dark:text-red-400">
+                     Failed to load calendar events. Please try again later.
+                  </p>
+               </div>
+            </div>
          </div>
       );
    }

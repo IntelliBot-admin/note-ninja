@@ -621,7 +621,7 @@ export default function AudioRecorder({
                       </div>
                     ) : (
                       <div className="hidden sm:flex gap-6 h-[calc(500px-4rem)]">
-                        <div className="flex-1 overflow-y-auto pr-6">
+                        <div className="flex-1 overflow-y-auto pr-6 pb-6">
                           <div className="prose prose-sm max-w-none">
                             <div dangerouslySetInnerHTML={{ __html: translatedSummary || summary }} />
                           </div>

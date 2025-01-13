@@ -272,12 +272,12 @@ export default function MeetingDetail() {
               </div>
             ) : (
               <div className="flex items-center space-x-2">
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                   {currentMeeting?.title || 'Untitled Meeting'}
                 </h1>
                 <button
                   onClick={() => setIsEditingTitle(true)}
-                  className="p-1 text-gray-400 hover:text-indigo-600 rounded-full hover:bg-gray-100"
+                  className="p-1 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
                   title="Edit title"
                 >
                   <Edit2 className="w-5 h-5" />

@@ -14,6 +14,7 @@ import { useAuthStore } from './store/authStore';
 import Settings from './pages/Settings';
 import '@stripe/stripe-js';
 import { checkBuildVersion } from './utils/versionChecker';
+import MicrosoftCallback from './pages/MicrosoftCallback';
 
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -102,6 +103,10 @@ export default function App() {
                 <MeetingDetail />
               </PrivateRoute>
             }
+          />
+          <Route
+            path="/auth/microsoft/callback"
+            element={<MicrosoftCallback />}
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
