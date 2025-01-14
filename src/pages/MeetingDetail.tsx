@@ -43,6 +43,7 @@ export default function MeetingDetail() {
 
   // Record Meeting state
   const [recordTranscript, setRecordTranscript] = useState('');
+  const [transcript, setTranscript] = useState('');
   const [recordAudioUrl, setRecordAudioUrl] = useState('');
   const [recordSummary, setRecordSummary] = useState('');
   const [recordMeetingType, setRecordMeetingType] = useState<MeetingType>('general');
@@ -71,6 +72,7 @@ export default function MeetingDetail() {
 
           // Set Record Meeting content
           setRecordTranscript(meetingData.recordTranscription || '');
+          setTranscript(meetingData.transcription || '');
           setRecordAudioUrl(meetingData.recordAudioUrl || '');
           setRecordSummary(meetingData.recordSummary || '');
           setRecordMeetingType(meetingData.recordMeetingType || 'general');
@@ -169,7 +171,7 @@ export default function MeetingDetail() {
               updateMeeting(id!, { speakers, source: 'record' })}
             onRecordingStateChange={setIsRecording}
             onNotesChange={handleNotesChange}
-            initialTranscript={recordTranscript}
+            initialTranscript={recordTranscript || transcript}
             initialAudioUrl={recordAudioUrl}
             initialSummary={recordSummary}
             initialMeetingType={recordMeetingType}
