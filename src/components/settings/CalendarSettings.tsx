@@ -4,7 +4,7 @@ import {  handleGoogle, handleMicrosoft, disconnectGoogle, disconnectMicrosoft }
 
 import { useConnectedCalendars } from '../../hooks/useCalender';
 import { useSearchParams } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 
 
@@ -12,6 +12,7 @@ export default function CalendarSettings() {
   const { user } = useAuthStore();
   const { connectedCalendars, loading } = useConnectedCalendars(user?.uid);
   const [searchParams] = useSearchParams();
+  const [disconnectingIds, setDisconnectingIds] = useState<string[]>([]);
 
   useEffect(() => {
     const error = searchParams.get('error');
@@ -43,21 +44,27 @@ export default function CalendarSettings() {
     );
   }
 
-  const handleDisconnectGoogle = async () => {
+  const handleDisconnectGoogle = async (calendarId: string) => {
     try {
-      await disconnectGoogle();
+      setDisconnectingIds(prev => [...prev, calendarId]);
+      await disconnectGoogle(calendarId);
       // The useConnectedCalendars hook should automatically refresh
     } catch (error) {
       console.error('Failed to disconnect Google calendar:', error);
+    } finally {
+      setDisconnectingIds(prev => prev.filter(id => id !== calendarId));
     }
   };
 
-  const handleDisconnectMicrosoft = async () => {
+  const handleDisconnectMicrosoft = async (calendarId: string) => {
     try {
-      await disconnectMicrosoft();
+      setDisconnectingIds(prev => [...prev, calendarId]);
+      await disconnectMicrosoft(calendarId);
       // The useConnectedCalendars hook should automatically refresh
     } catch (error) {
       console.error('Failed to disconnect Microsoft calendar:', error);
+    } finally {
+      setDisconnectingIds(prev => prev.filter(id => id !== calendarId));
     }
   };
 
@@ -69,76 +76,82 @@ export default function CalendarSettings() {
       </p>
       
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {/* Google Calendar */}
+      <div className="grid gap-4">
+        {/* Google Calendar Section */}
         <div className="border rounded-lg p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
               <Calendar className="w-6 h-6 text-red-500" />
-              <div>
-                <h4 className="font-medium">Google Calendar</h4>
-                {/* {connectedCalendars.find(c => c.type === 'google') ? (
-                  <p className="text-sm font-medium text-green-600">
-                    Connected to {connectedCalendars.find(c => c.type === 'google')?.email}
-                  </p>
-                ) : (
-                  <p className="text-sm text-gray-500">Not connected</p>
-                )} */}
-              </div>
+              <h4 className="font-medium">Google Calendars</h4>
             </div>
-            <div className="flex items-center space-x-2">
-              {connectedCalendars.find(c => c.type === 'google') ? (
-                <button
-                  onClick={handleDisconnectGoogle}
-                  className="px-3 py-1.5 text-sm font-medium text-red-600 border border-red-600 rounded-md hover:bg-red-50"
-                >
-                  Disconnect
-                </button>
-              ) : (
-                <button
-                  onClick={handleGoogle}
-                  className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
-                >
-                  Connect
-                </button>
-              )}
-            </div>
+            <button
+              onClick={handleGoogle}
+              className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
+            >
+              {connectedCalendars.some(calendar => calendar.type === 'google') 
+                ? 'Connect Another' 
+                : 'Connect'}
+            </button>
+          </div>
+          
+          <div className="space-y-3">
+            {connectedCalendars
+              .filter(calendar => calendar.type === 'google')
+              .map(calendar => (
+                <div key={calendar.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-md">
+                  <p className="text-sm font-medium text-gray-900">{calendar.email}</p>
+                  <button
+                    onClick={() => handleDisconnectGoogle(calendar.id)}
+                    disabled={disconnectingIds.includes(calendar.id)}
+                    className="px-3 py-1.5 text-sm font-medium text-red-600 border border-red-600 rounded-md hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {disconnectingIds.includes(calendar.id) ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      'Disconnect'
+                    )}
+                  </button>
+                </div>
+              ))}
           </div>
         </div>
 
-        {/* Microsoft Calendar */}
+        {/* Microsoft Calendar Section */}
         <div className="border rounded-lg p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
               <Calendar className="w-6 h-6 text-blue-500" />
-              <div>
-                <h4 className="font-medium">Microsoft Calendar</h4>
-                {/* {connectedCalendars.find(c => c.type === 'microsoft') ? (
-                  <p className="text-sm font-medium text-green-600">
-                    Connected to {connectedCalendars.find(c => c.type === 'microsoft')?.email}
-                  </p>
-                ) : (
-                  <p className="text-sm text-gray-500">Not connected</p>
-                )} */}
-              </div>
+              <h4 className="font-medium">Microsoft Calendars</h4>
             </div>
-            <div className="flex items-center space-x-2">
-              {connectedCalendars.find(c => c.type === 'microsoft') ? (
-                <button
-                  onClick={handleDisconnectMicrosoft}
-                  className="px-3 py-1.5 text-sm font-medium text-red-600 border border-red-600 rounded-md hover:bg-red-50"
-                >
-                  Disconnect
-                </button>
-              ) : (
-                <button
-                  onClick={handleMicrosoft}
-                  className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
-                >
-                  Connect
-                </button>
-              )}
-            </div>
+            <button
+              onClick={handleMicrosoft}
+              className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
+            >
+              {connectedCalendars.some(calendar => calendar.type === 'microsoft') 
+                ? 'Connect Another' 
+                : 'Connect'}
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {connectedCalendars
+              .filter(calendar => calendar.type === 'microsoft')
+              .map(calendar => (
+                <div key={calendar.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-md">
+                  <p className="text-sm font-medium text-gray-900">{calendar.email}</p>
+                  <button
+                    onClick={() => handleDisconnectMicrosoft(calendar.id)}
+                    disabled={disconnectingIds.includes(calendar.id)}
+                    className="px-3 py-1.5 text-sm font-medium text-red-600 border border-red-600 rounded-md hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {disconnectingIds.includes(calendar.id) ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      'Disconnect'
+                    )}
+                  </button>
+                </div>
+              ))}
           </div>
         </div>
       </div>

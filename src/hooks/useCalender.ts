@@ -3,7 +3,16 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import toast from 'react-hot-toast';
 
-interface ConnectedCalendar {
+interface CalendarConnection {
+   provider: 'google' | 'microsoft';
+   email: string;
+   isConnected: boolean;
+   lastSynced: number;
+   tokenExpiry?: number;
+}
+
+export interface ConnectedCalendar {
+   id: string;
    type: 'google' | 'microsoft';
    email: string;
 }
@@ -21,14 +30,18 @@ export function useConnectedCalendars(userId: string | undefined) {
       const unsubscribe = onSnapshot(doc(db, 'users', userId), (userDoc) => {
          try {
             const userData = userDoc.data();
-            const connectedProviders: ConnectedCalendar[] = [];
+            const connections = userData?.calendarConnections || {};
 
-            if (userData?.isGoogleConnected) {
-               connectedProviders.push({ type: 'google', email: userData.email || '' });
-            }
-            if (userData?.isMicrosoftConnected) {
-               connectedProviders.push({ type: 'microsoft', email: userData.email || '' });
-            }
+            const connectedProviders: ConnectedCalendar[] = Object.entries(connections)
+               .filter((entry): entry is [string, CalendarConnection] => {
+                  const [_, connection] = entry as [string, CalendarConnection];
+                  return connection && connection.isConnected;
+               })
+               .map(([id, connection]) => ({
+                  id,
+                  type: connection.provider,
+                  email: connection.email
+               }));
 
             setConnectedCalendars(connectedProviders);
          } catch (error) {

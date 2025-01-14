@@ -32,7 +32,7 @@ const MS_REDIRECT_URI = import.meta.env.VITE_MICROSOFT_REDIRECT_URI;
 
 
 
-const MS_SCOPE = 'Calendars.Read Calendars.ReadWrite Calendars.Read.Shared User.Read offline_access';
+const MS_SCOPE = 'Calendars.Read Calendars.ReadWrite Calendars.Read.Shared User.Read offline_access email openid';
 
 
 
@@ -46,7 +46,9 @@ export async function handleGoogle() {
 
     'https://www.googleapis.com/auth/calendar.readonly',
 
-    'https://www.googleapis.com/auth/calendar'
+    'https://www.googleapis.com/auth/calendar',
+
+    'https://www.googleapis.com/auth/userinfo.email'
 
   ].join(' ');
 
@@ -82,7 +84,11 @@ export async function handleGoogle() {
 
         }
 
-        await serverPost('/store-tokens', {
+        // Send the code to your backend, which will:
+        // 1. Exchange the code for tokens
+        // 2. Use the access token to fetch user info
+        // 3. Return the email along with other necessary data
+        const result = await serverPost('/oauth/store-tokens', {
 
           code: response.code,
 
@@ -91,6 +97,9 @@ export async function handleGoogle() {
           provider: 'google'
 
         });
+
+        // The email should now be available in the result from your backend
+        console.log('User info from backend:', result);
 
       } catch (error) {
 
@@ -215,35 +224,17 @@ export async function getCalendarEvents({ google, microsoft }: { google: boolean
   }
   console.log(queryParams.toString(), "queryParams");
   // If only Google is connected or no calendars are connected
-  return await serverFetch(`/get-events?${queryParams.toString()}`);
+  return await serverFetch(`/oauth/get-events?${queryParams.toString()}`);
 
 }
 
 
 
-export async function disconnectGoogle() {
+export async function disconnectGoogle(calendarId: string) {
 
   try {
 
-    // Update local state if needed
-
-    // Update user's Microsoft connection status in Firestore
-
-    const { user } = useAuthStore.getState();
-
-    if (user?.uid) {
-
-      const userRef = doc(db, 'users', user.uid);
-
-      await updateDoc(userRef, {
-
-        isGoogleConnected: false,
-
-        googleRefreshToken: null
-
-      });
-
-    }
+    await serverPost('/oauth/disconnect/google', { calendarId });
 
     return true;
 
@@ -258,11 +249,11 @@ export async function disconnectGoogle() {
 }
 
 
-export async function disconnectMicrosoft() {
+export async function disconnectMicrosoft(calendarId: string) {
   try {
     console.log("[disconnectMicrosoft] Starting Microsoft disconnect process");
 
-    await serverPost('/disconnect/microsoft', {});
+    await serverPost('/oauth/disconnect/microsoft', { calendarId });
 
     console.log("[disconnectMicrosoft] Successfully disconnected Microsoft account");
     return true;

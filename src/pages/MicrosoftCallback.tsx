@@ -35,7 +35,7 @@ export default function MicrosoftCallback() {
             }
 
             // Exchange code for tokens
-            await serverPost('/store-tokens', {
+            await serverPost('/oauth/store-tokens', {
                code,
                code_verifier: codeVerifier,
                redirect_uri: import.meta.env.VITE_MICROSOFT_REDIRECT_URI,
