@@ -48,15 +48,16 @@ const formatTranscript = (text: string) => {
   return paragraphs;
 };
 
-const AutoScrollTranscript = ({ children }: { children: React.ReactNode }) => {
+const AutoScrollTranscript = ({ children, preventScroll }: { children: React.ReactNode, preventScroll?: boolean }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current && !preventScroll) {
       const element = scrollRef.current;
       element.scrollTop = element.scrollHeight;
+      console.log('scrolled');
     }
-  }, [children]);
+  }, [children, preventScroll]);
 
   return (
     <div ref={scrollRef} className="prose max-w-none h-[calc(100%-80px)] max-h-[calc(800px-80px)] overflow-y-auto pt-12 scroll-smooth px-1 sm:px-4">
@@ -118,6 +119,8 @@ export function TranscriptDisplay({
   const [newSpeakerName, setNewSpeakerName] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
 
   const handleLanguageChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const targetLanguage = e.target.value;
@@ -175,16 +178,27 @@ export function TranscriptDisplay({
     }
   };
 
-  const handleSpeakerEdit = (speaker: string) => {
+  const handleSpeakerEdit = (speaker: string, index: number) => {
     setEditingSpeaker(speaker);
+    setEditingIndex(index);
     setNewSpeakerName(speaker);
   };
 
-  const handleSpeakerUpdate = (oldName: string) => {
+  const handleSpeakerUpdate = async (oldName: string) => {
     if (newSpeakerName && onUpdateSpeaker) {
-      onUpdateSpeaker(oldName, newSpeakerName);
+      setIsSaving(true);
+      try {
+        await Promise.resolve(onUpdateSpeaker(oldName, newSpeakerName));
+        toast.success('Speaker name updated successfully');
+      } catch (error) {
+        console.error('Error updating speaker name:', error);
+        toast.error('Failed to update speaker name');
+      } finally {
+        setIsSaving(false);
+      }
     }
     setEditingSpeaker(null);
+    setEditingIndex(null);
   };
 
   if (!transcript) {
@@ -216,7 +230,7 @@ export function TranscriptDisplay({
         </select>
       </div>
 
-      <AutoScrollTranscript>
+      <AutoScrollTranscript preventScroll={!!editingSpeaker || isSaving}>
         {isTranslating ? (
           <div className="flex items-center justify-center h-full">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -226,7 +240,7 @@ export function TranscriptDisplay({
             {speakers.map((utterance, index) => (
               <div key={index} className="flex flex-col sm:flex-row sm:space-x-3 space-y-1 sm:space-y-0">
                 <div className="flex-shrink-0">
-                  {editingSpeaker === utterance.speaker ? (
+                  {editingIndex === index ? (
                     <div className="flex items-center space-x-2">
                       <input
                         type="text"
@@ -254,7 +268,7 @@ export function TranscriptDisplay({
                       </span>
                       {onUpdateSpeaker && (
                         <button
-                          onClick={() => handleSpeakerEdit(utterance.speaker)}
+                          onClick={() => handleSpeakerEdit(utterance.speaker, index)}
                           className="text-gray-400 hover:text-gray-600 p-1"
                         >
                           <Pencil className="w-3 h-3" />
