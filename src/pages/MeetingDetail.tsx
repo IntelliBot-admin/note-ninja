@@ -45,6 +45,7 @@ export default function MeetingDetail() {
   const [recordTranscript, setRecordTranscript] = useState('');
   const [transcript, setTranscript] = useState('');
   const [recordAudioUrl, setRecordAudioUrl] = useState('');
+  const [audioUrl, setAudioUrl] = useState('');
   const [recordSummary, setRecordSummary] = useState('');
   const [recordMeetingType, setRecordMeetingType] = useState<MeetingType>('general');
   const [recordSpeakers, setRecordSpeakers] = useState<Speaker[]>([]);
@@ -74,6 +75,7 @@ export default function MeetingDetail() {
           setRecordTranscript(meetingData.recordTranscription || '');
           setTranscript(meetingData.transcription || '');
           setRecordAudioUrl(meetingData.recordAudioUrl || '');
+          setAudioUrl(meetingData.audioUrl || '');
           setRecordSummary(meetingData.recordSummary || '');
           setRecordMeetingType(meetingData.recordMeetingType || 'general');
           setRecordSpeakers(meetingData.recordSpeakers || []);
@@ -172,7 +174,7 @@ export default function MeetingDetail() {
             onRecordingStateChange={setIsRecording}
             onNotesChange={handleNotesChange}
             initialTranscript={recordTranscript || transcript}
-            initialAudioUrl={recordAudioUrl}
+            initialAudioUrl={recordAudioUrl || audioUrl}
             initialSummary={recordSummary}
             initialMeetingType={recordMeetingType}
             initialSpeakers={recordSpeakers}
