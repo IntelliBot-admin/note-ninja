@@ -115,12 +115,10 @@ export function TranscriptDisplay({
   const [selectedLanguage, setSelectedLanguage] = useState<string>('');
   const [translatedText, setTranslatedText] = useState<string>('');
   const [isTranslating, setIsTranslating] = useState(false);
-  const [editingSpeaker, setEditingSpeaker] = useState<string | null>(null);
   const [newSpeakerName, setNewSpeakerName] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [isSaving, setIsSaving] = useState<boolean>(false);
 
   const handleLanguageChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const targetLanguage = e.target.value;
@@ -179,25 +177,20 @@ export function TranscriptDisplay({
   };
 
   const handleSpeakerEdit = (speaker: string, index: number) => {
-    setEditingSpeaker(speaker);
     setEditingIndex(index);
     setNewSpeakerName(speaker);
   };
 
   const handleSpeakerUpdate = async (oldName: string) => {
     if (newSpeakerName && onUpdateSpeaker) {
-      setIsSaving(true);
       try {
         await Promise.resolve(onUpdateSpeaker(oldName, newSpeakerName));
         toast.success('Speaker name updated successfully');
       } catch (error) {
         console.error('Error updating speaker name:', error);
         toast.error('Failed to update speaker name');
-      } finally {
-        setIsSaving(false);
-      }
+      } 
     }
-    setEditingSpeaker(null);
     setEditingIndex(null);
   };
 
