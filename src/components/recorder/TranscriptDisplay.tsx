@@ -48,16 +48,16 @@ const formatTranscript = (text: string) => {
   return paragraphs;
 };
 
-const AutoScrollTranscript = ({ children, preventScroll }: { children: React.ReactNode, preventScroll?: boolean }) => {
+const AutoScrollTranscript = ({ children, transcript , partialTranscript}: { children: React.ReactNode, transcript: string, partialTranscript: string  }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (scrollRef.current && !preventScroll) {
+    if (scrollRef.current) {
       const element = scrollRef.current;
       element.scrollTop = element.scrollHeight;
       console.log('scrolled');
     }
-  }, [children, preventScroll]);
+  }, [transcript, partialTranscript]);
 
   return (
     <div ref={scrollRef} className="prose max-w-none h-[calc(100%-80px)] max-h-[calc(800px-80px)] overflow-y-auto pt-12 scroll-smooth px-1 sm:px-4">
@@ -230,7 +230,7 @@ export function TranscriptDisplay({
         </select>
       </div>
 
-      <AutoScrollTranscript preventScroll={!!editingSpeaker || isSaving}>
+      <AutoScrollTranscript transcript={transcript} partialTranscript={partialTranscript || ''}>
         {isTranslating ? (
           <div className="flex items-center justify-center h-full">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
