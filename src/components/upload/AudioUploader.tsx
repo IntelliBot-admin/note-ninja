@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { FileAudio, Loader2, Plus } from 'lucide-react';
+import { FileAudio, Loader2, Plus, AlertCircle } from 'lucide-react';
 import { transcribeAudio } from '../../services/assemblyAI';
 import { generateSummary } from '../../utils/aiSummary';
 import { MeetingType, meetingTypes } from '../../types/meeting';
@@ -78,6 +78,10 @@ export default function AudioUploader({
   const [actionItems, setActionItems] = useState<ActionItem[]>(initialRecommendedActionItems);
   const { setShowForm, setFormData } = useActionItemStore();
   const { setActiveTab: setActiveTabNavigation } = useNavigationStore();
+  const [errorModal, setErrorModal] = useState<{
+    isOpen: boolean;
+    message: string;
+  }>({ isOpen: false, message: '' });
 
   const extractYoutubeId = (url: string): string | null => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -217,7 +221,10 @@ export default function AudioUploader({
       toast.success('Audio transcribed successfully');
     } catch (error: any) {
       console.log('Error processing YouTube link:', error);
-      toast.error(error.message);
+      setErrorModal({
+        isOpen: true,
+        message: error.message || 'An error occurred while processing the YouTube link'
+      });
       setProcessingStatus('Processing failed');
     } finally {
       setIsProcessing(false);
@@ -519,6 +526,28 @@ export default function AudioUploader({
         transcript={transcript}
         summary={summary}
       />
+
+      {errorModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <div className="flex items-center space-x-3 text-red-600 mb-4">
+              <AlertCircle className="w-6 h-6" />
+              <h3 className="text-lg font-medium">Error</h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              {errorModal.message}
+            </p>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setErrorModal(prev => ({ ...prev, isOpen: false }))}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
