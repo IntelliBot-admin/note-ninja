@@ -72,11 +72,19 @@ export async function apiPost(
     });
 
     if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
+      // Parse error response
+      const errorData = await response.json();
+      throw {
+        status: response.status,
+        statusText: response.statusText,
+        response: {
+          data: errorData
+        }
+      };
     }
 
     return response.json();
-  } catch (error) {
+  } catch (error: any) {
     console.error('API request error:', error);
     throw error;
   }

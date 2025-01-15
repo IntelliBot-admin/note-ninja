@@ -17,9 +17,19 @@ export async function transcribeAudioFromYoutube(url: string) {
   try {
     const result = await apiPost('/extractAudioFromYoutube', { url });
     return result;
-  } catch (error) {
-    console.error('Error extracting audio from YouTube:', error);
-    throw new Error('Failed to extract audio from YouTube');
+  } catch (error: any) {
+    // Server will send { error: 'Error processing video', message: userMessage }
+    const errorMessage = error.response?.data?.message || 
+                        error.response?.data?.error || 
+                        'Failed to process video. Please try again later.';
+                        
+    console.error('YouTube audio extraction error:', {
+      message: errorMessage,
+      status: error.status,
+      response: error.response?.data
+    });
+
+    throw new Error(errorMessage);
   }
 }
 

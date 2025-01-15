@@ -37,6 +37,9 @@ export interface Meeting {
   updatedAt: Timestamp;
   source?: ContentSource;
   personalNotes?: string;
+  externalEventId?: string;
+  startTime?: Date;
+  endTime?: Date;
   
   // Record Meeting content
   recordTranscription?: string;

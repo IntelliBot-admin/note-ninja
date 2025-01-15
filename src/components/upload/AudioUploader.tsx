@@ -202,7 +202,7 @@ export default function AudioUploader({
 
     try {
       setIsProcessing(true);
-      setProcessingStatus('Processing YouTube link...');
+      setProcessingStatus('Processing Link...');
 
       const result = await transcribeAudioFromYoutube(youtubeLink);
 
@@ -215,14 +215,15 @@ export default function AudioUploader({
 
       setProcessingStatus('');
       toast.success('Audio transcribed successfully');
-    } catch (error) {
-      console.error('Error processing YouTube link:', error);
-      toast.error('Failed to process YouTube link');
+    } catch (error: any) {
+      console.log('Error processing YouTube link:', error);
+      toast.error(error.message);
       setProcessingStatus('Processing failed');
     } finally {
       setIsProcessing(false);
     }
   }, [youtubeLink, onTranscriptChange, onSpeakersChange, speakers]);
+
 
   return (
     <div className="space-y-8">
@@ -266,11 +267,11 @@ export default function AudioUploader({
         </div>
 
         <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-lg shadow-sm border p-4 space-y-3">
-            <label className="block text-sm font-medium text-gray-700">
-              YouTube Video URL
+          <div className="bg-white rounded-lg p-4 space-y-3 max-w-md mx-auto">
+            <label className="block text-base font-medium text-gray-900">
+              YouTube, Vimeo and Zoom URL
             </label>
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-2">
               <input
                 type="text"
                 value={youtubeLink}
@@ -279,22 +280,18 @@ export default function AudioUploader({
                   setYoutubeLink(newValue);
                   onYoutubeLinkChange?.(newValue);
                 }}
-                placeholder="Paste YouTube link here"
-                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                placeholder="Paste link here"
+                className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm focus:border-indigo-500 focus:ring-indigo-500 placeholder:text-gray-500"
               />
+              <p className="text-sm text-gray-500">
+                Please ensure Vimeo and Zoom recordings are not password protected.
+              </p>
               <button
                 onClick={handleYoutubeLinkSubmit}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                className="w-full py-2 bg-[#6366F1] text-white rounded-md hover:bg-indigo-700 focus:outline-none disabled:opacity-50 font-medium text-sm"
                 disabled={isProcessing}
               >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  'Submit YouTube Link'
-                )}
+                {isProcessing ? 'Processing...' : 'Submit Link'}
               </button>
             </div>
             {youtubeVideoId && (
