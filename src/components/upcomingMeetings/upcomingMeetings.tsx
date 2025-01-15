@@ -9,6 +9,8 @@ import toast from 'react-hot-toast';
 import { BsMicrosoftTeams } from 'react-icons/bs';
 import { SiGooglemeet } from 'react-icons/si';
 import { useMeetingStore } from '../../store/meetingStore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 
 interface CalendarEvent {
    id: string;
@@ -34,6 +36,35 @@ export default function UpcomingMeetings() {
    const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
    const { addMeeting } = useMeetingStore();
    const [isError, setIsError] = useState(false);
+   const [addedEventIds, setAddedEventIds] = useState<Set<string>>(new Set());
+
+   useEffect(() => {
+      async function fetchAddedEvents() {
+         if (!user?.uid) return;
+
+         try {
+            const meetingsRef = collection(db, 'meetings');
+            const q = query(
+               meetingsRef, 
+               where('userId', '==', user.uid),
+               where('externalEventId', '!=', null)
+            );
+            const querySnapshot = await getDocs(q);
+
+            console.log(querySnapshot.docs);
+            
+            
+            const addedIds = new Set(
+               querySnapshot.docs.map(doc => doc.data().externalEventId)
+            );
+            setAddedEventIds(addedIds);
+         } catch (error) {
+            console.error('Error fetching added events:', error);
+         }
+      }
+
+      fetchAddedEvents();
+   }, [user?.uid]);
 
    const handleAddToCalendar = async (event: CalendarEvent) => {
       if (!user?.uid) {
@@ -58,6 +89,7 @@ export default function UpcomingMeetings() {
          };
 
          await addMeeting(formattedMeeting);
+         setAddedEventIds(prev => new Set(prev).add(event.id));
          toast.success('Meeting added to calendar');
       } catch (error) {
          console.error('Error adding event to calendar:', error);
@@ -208,7 +240,18 @@ export default function UpcomingMeetings() {
                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                               {event.title}
                            </p>
-                           <Plus onClick={() => handleAddToCalendar(event)} className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer ml-2 flex-shrink-0" />
+                           {addedEventIds.has(event.id) ? (
+                              <span className="text-xs text-green-600 dark:text-green-400 flex items-center">
+                                 <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                 </svg>
+                              </span>
+                           ) : (
+                              <Plus 
+                                 onClick={() => handleAddToCalendar(event)} 
+                                 className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer ml-2 flex-shrink-0" 
+                              />
+                           )}
                         </div>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                            {formatEventDate(event.startTime)}

@@ -17,7 +17,7 @@ export default function CalendarView({ meetings }: CalendarViewProps) {
 
   const getMeetingsForDay = (date: Date) => {
     return meetings.filter(meeting => {
-      const meetingDate = new Date(meeting.createDate.toDate());
+      const meetingDate = new Date(meeting.externalEventId ? meeting.startTime.toDate() : meeting.createDate.toDate());
       return isSameDay(meetingDate, date);
     });
   };
@@ -128,7 +128,7 @@ export default function CalendarView({ meetings }: CalendarViewProps) {
                           {meeting.title}
                         </div>
                         <div className="text-indigo-600/70 dark:text-indigo-400/70 text-[10px]">
-                          {format(meeting.createDate.toDate(), 'h:mm a')}
+                          {format( meeting.externalEventId ? meeting.startTime.toDate() : meeting.createDate.toDate(), 'h:mm a')}
                         </div>
                       </button>
                     ))}

@@ -17,6 +17,8 @@ import { useNotificationStore } from '../store/notificationStore';
 import { db } from '../lib/firebase';
 import UpcomingMeetings from '../components/upcomingMeetings/upcomingMeetings';
 import { useConnectedCalendars } from '../hooks/useCalender';
+import { SiGooglemeet } from 'react-icons/si';
+import { BsMicrosoftTeams } from 'react-icons/bs';
 
 const postItColors = [
   'bg-yellow-100',
@@ -56,6 +58,9 @@ export default function Dashboard() {
   const [pendingViewMode, setPendingViewMode] = useState<ViewMode>('grid');
   const { setNotifications } = useNotificationStore();
   const { connectedCalendars } = useConnectedCalendars(user?.uid);
+  const [selectedCalendars, setSelectedCalendars] = useState<string[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<{ [key: string]: string }>({});
+
   useEffect(() => {
     if (!user) return;
 
@@ -101,6 +106,14 @@ export default function Dashboard() {
       result = result.filter(meeting => meeting.categoryId === selectedCategory);
     }
 
+    if (selectedCalendars.length > 0) {
+      result = result.filter(meeting => 
+        meeting.externalEventId && 
+        calendarEvents[meeting.externalEventId] && 
+        selectedCalendars.includes(calendarEvents[meeting.externalEventId])
+      );
+    }
+
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(meeting => {
@@ -139,7 +152,7 @@ export default function Dashboard() {
     });
 
     setFilteredMeetings(result);
-  }, [meetings, searchQuery, sortConfig, selectedCategory]);
+  }, [meetings, searchQuery, sortConfig, selectedCategory, selectedCalendars, calendarEvents]);
 
 
   useEffect(() => {
@@ -167,6 +180,34 @@ export default function Dashboard() {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const calendarEventsRef = collection(db, 'calendarEvents');
+    const userEventsQuery = query(
+      calendarEventsRef,
+      where('userId', '==', user.uid)
+    );
+
+    const unsubscribe = onSnapshot(
+      userEventsQuery,
+      (snapshot) => {
+        const eventsMap: { [key: string]: string } = {};
+        snapshot.docs.forEach(doc => {
+          const data = doc.data();
+          eventsMap[doc.id] = data.calendarId;
+        });
+        setCalendarEvents(eventsMap);
+      },
+      (error) => {
+        console.error('Error fetching calendar events:', error);
+        toast.error('Failed to load calendar mappings');
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user]);
 
   const handleDelete = async (meeting: Meeting) => {
     setDeletingMeeting(meeting);
@@ -260,6 +301,20 @@ export default function Dashboard() {
   const getCategoryColor = (categoryId: string) => {
     const category = categories.find(cat => cat.id === categoryId);
     return category?.color || '#6366F1';
+  };
+
+  const handleCalendarToggle = (calendarId: string) => {
+    setSelectedCalendars(current => {
+      if (calendarId === '') {
+        return current.length > 0 ? [] : current;
+      }
+      
+      if (current.includes(calendarId)) {
+        return current.filter(id => id !== calendarId);
+      } else {
+        return [...current, calendarId];
+      }
+    });
   };
 
   if (loading) {
@@ -400,7 +455,7 @@ export default function Dashboard() {
             </div>
 
             {showFilters && (
-              <div className="mb-6 bg-white p-4 rounded-lg shadow-sm">
+              <div className="mb-6 bg-white p-4 rounded-lg shadow-sm space-y-4">
                 <h3 className="text-sm font-medium text-gray-700 mb-3">Filter by Category</h3>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -422,6 +477,36 @@ export default function Dashboard() {
                         }`}
                     >
                       {category.name}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleCalendarToggle('')}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium flex items-center space-x-2 ${
+                      selectedCalendars.length === 0
+                        ? 'bg-indigo-100 text-indigo-700'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    <span>All</span>
+                  </button>
+                  {connectedCalendars.map((calendar) => (
+                    <button
+                      key={calendar.id}
+                      onClick={() => handleCalendarToggle(calendar.id)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium flex items-center space-x-2 ${
+                        selectedCalendars.includes(calendar.id)
+                          ? 'bg-indigo-100 text-indigo-700'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {calendar.type === 'google' ? (
+                        <SiGooglemeet className="w-4 h-4 text-red-600" />
+                      ) : (
+                        <BsMicrosoftTeams className="w-4 h-4 text-blue-600" />
+                      )}
+                      <span>{calendar.email}</span>
                     </button>
                   ))}
                 </div>
@@ -591,7 +676,7 @@ export default function Dashboard() {
           </div>
 
           {/* Sidebar */}
-          <div className={`lg:w-80 flex-shrink-0 ${connectedCalendars.length === 0 ? 'hidden' : ''}`}>
+          <div className={`lg:w-80 flex-shrink-0 ${connectedCalendars.length === 0  ? 'hidden' : ''}`}>
             <div className="sticky top-8">
               <UpcomingMeetings />
             </div>
