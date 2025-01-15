@@ -1,6 +1,4 @@
-import { doc, updateDoc } from 'firebase/firestore';
 
-import { db } from '../lib/firebase';
 
 import { serverFetch, serverPost } from './api';
 
@@ -17,11 +15,6 @@ import { useAuthStore } from '../store/authStore';
 // Google OAuth configuration
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-
-const GOOGLE_REDIRECT_URI = `${window.location.origin}/settings`;
-
-const GOOGLE_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
-
 
 
 // Microsoft OAuth configuration
@@ -54,7 +47,7 @@ export async function handleGoogle() {
 
 
 
-  const redirect_uri = window.location.origin;
+  const redirect_uri = window.location.origin 
 
 
 
@@ -100,7 +93,9 @@ export async function handleGoogle() {
 
         // The email should now be available in the result from your backend
         console.log('User info from backend:', result);
-
+        if (result.success) {
+          getCalendarEvents({ google: true, microsoft: true, forceRefetch: true });
+        }
       } catch (error) {
 
         console.error('Error handling Google OAuth callback:', error);
@@ -114,46 +109,6 @@ export async function handleGoogle() {
   client.requestCode();
 
 }
-
-
-
-
-// Constants and types
-
-// const MSAL_CONFIG = {
-//   auth: {
-//     clientId: MS_CLIENT_ID,
-//     authority: 'https://login.microsoftonline.com/common',
-//     redirectUri: MS_REDIRECT_URI,
-//   },
-//   cache: {
-//     cacheLocation: 'sessionStorage'
-//   }
-// };
-
-
-
-// export async function initializeMsal() {
-
-//   if (!isInitialized || !msalInstance) {
-
-//     const instance = new PublicClientApplication(MSAL_CONFIG);
-
-//     await instance.initialize();
-
-//     setMsalInstance(instance);
-
-//     setInitialized(true);
-
-//     return instance;
-
-//   }
-
-//   return msalInstance;
-
-// }
-
-
 
 // Handle Microsoft login
 
@@ -208,7 +163,7 @@ export async function handleMicrosoft() {
 
 // Update getMicrosoftCalendarEvents to ensure MSAL is initialized
 
-export async function getCalendarEvents({ google, microsoft }: { google: boolean, microsoft: boolean }) {
+export async function getCalendarEvents({ google, microsoft, forceRefetch = false }: { google: boolean, microsoft: boolean, forceRefetch?: boolean }) {
 
   // Build query parameters based on connected calendars
 
@@ -219,10 +174,11 @@ export async function getCalendarEvents({ google, microsoft }: { google: boolean
   }
 
   if (microsoft) {
-
     queryParams.append('microsoft', 'true');
   }
-  console.log(queryParams.toString(), "queryParams");
+  if (forceRefetch) {
+    queryParams.append('forceRefetch', 'true');
+  }
   // If only Google is connected or no calendars are connected
   return await serverFetch(`/oauth/get-events?${queryParams.toString()}`);
 

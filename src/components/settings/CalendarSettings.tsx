@@ -1,6 +1,6 @@
 import { Calendar, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
-import {  handleGoogle, handleMicrosoft, disconnectGoogle, disconnectMicrosoft } from '../../utils/calendarAuth';
+import {  handleGoogle, handleMicrosoft, disconnectGoogle, disconnectMicrosoft, getCalendarEvents } from '../../utils/calendarAuth';
 
 import { useConnectedCalendars } from '../../hooks/useCalender';
 import { useSearchParams } from 'react-router-dom';
@@ -33,6 +33,7 @@ export default function CalendarSettings() {
 
     if (success) {
       toast.success('Calendar connected successfully!');
+      getCalendarEvents({ google: true, microsoft: true, forceRefetch: true });
     }
   }, [searchParams, toast]);
 
