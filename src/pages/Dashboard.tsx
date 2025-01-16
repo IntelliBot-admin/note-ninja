@@ -253,6 +253,10 @@ export default function Dashboard() {
     }
   };
 
+  const getDisplayDate = (meeting: Meeting) => {
+    return formatDate(meeting.startTime || meeting.createDate);
+  };
+
   const getHighlightedText = (text: string, highlight: string) => {
     if (!highlight.trim()) return text;
     const words = highlight.toLowerCase().split(/\s+/);
@@ -585,7 +589,7 @@ export default function Dashboard() {
                         <div className="flex items-center">
                           <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
                           <span className="truncate">
-                            {formatDate(meeting.createDate)}
+                            {getDisplayDate(meeting)}
                           </span>
                         </div>
                         <div className="flex items-center">
@@ -656,7 +660,7 @@ export default function Dashboard() {
                           <div className="mt-1 flex flex-col sm:flex-row sm:flex-wrap sm:space-x-6">
                             <div className="mt-2 flex items-center text-sm text-gray-500">
                               <Calendar className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
-                              {formatDate(meeting.createDate)}
+                              {getDisplayDate(meeting)}
                             </div>
                             <div className="mt-2 flex items-center text-sm text-gray-500">
                               <Users className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
