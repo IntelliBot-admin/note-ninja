@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { FileAudio, Loader2, Plus, AlertCircle } from 'lucide-react';
+import { FileAudio, Loader2, Plus, AlertCircle, Pencil, Copy } from 'lucide-react';
 import { transcribeAudio } from '../../services/assemblyAI';
 import { generateSummary } from '../../utils/aiSummary';
 import { MeetingType, meetingTypes } from '../../types/meeting';
@@ -83,6 +83,7 @@ export default function AudioUploader({
     isOpen: boolean;
     message: string;
   }>({ isOpen: false, message: '' });
+  const [isEditing, setIsEditing] = useState(false);
 
   const extractYoutubeId = (url: string): string | null => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -417,13 +418,38 @@ export default function AudioUploader({
                           </option>
                         ))}
                       </select>
-                      <button
-                        onClick={handleGenerateSummary}
-                        className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-                        disabled={isGeneratingSummary}
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={handleGenerateSummary}
+                          className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                          disabled={isGeneratingSummary}
+                        >
+                          {isGeneratingSummary ? 'Generating...' : 'Regenerate'}
+                        </button>
+
+                        {
+                        !isEditing && (
+                          <button
+                            onClick={() => setIsEditing(true)}
+                            className="p-2 text-gray-400 hover:text-gray-600 bg-white rounded-md border border-gray-300"
                       >
-                        {isGeneratingSummary ? 'Generating...' : 'Regenerate'}
+                            <Pencil className="w-4 h-4 stroke-indigo-600" />
+                          </button>
+                        )
+                      }
+
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(summary);
+                          toast.success('Summary copied to clipboard');
+                        }}
+                        className="p-2 text-gray-400 hover:text-gray-600 bg-white rounded-md border border-gray-300"
+                        title="Copy to clipboard"
+                      >
+                        <Copy className="w-4 h-4 stroke-indigo-600" />
                       </button>
+     
+                      </div>
                     </div>
                     <div className="flex-1 overflow-y-auto">
                       {showMindMap ? (
@@ -438,6 +464,8 @@ export default function AudioUploader({
                                 onSummaryChange(newContent, selectedMeetingType, actionItems || []);
                               }}
                               className="h-full"
+                              isEditing={isEditing}
+                              setIsEditing={setIsEditing}
                             />
                           </div>
                           

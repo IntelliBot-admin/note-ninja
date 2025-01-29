@@ -9,15 +9,18 @@ interface SummaryEditorProps {
    onSave: (newContent: string) => Promise<void>;
    className?: string;
    disabled?: boolean;
+   isEditing?: boolean;
+   setIsEditing: (value: boolean) => void;
 }
 
 export function SummaryEditor({
    content,
    onSave,
    className = '',
-   disabled = false
+   disabled = false,
+   isEditing = false,
+   setIsEditing
 }: SummaryEditorProps) {
-   const [isEditing, setIsEditing] = useState(false);
    const [isSaving, setIsSaving] = useState(false);
 
    const editor = useEditor({
@@ -101,15 +104,6 @@ export function SummaryEditor({
                   </button>
                </div>
             </div>
-         )}
-
-         {!isEditing && !disabled && (
-            <button
-               onClick={() => setIsEditing(true)}
-               className="absolute top-0 right-0 p-2 text-gray-400 hover:text-gray-600"
-            >
-               <Pencil className="w-4 h-4" />
-            </button>
          )}
       </div>
    );

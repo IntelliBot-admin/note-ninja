@@ -12,7 +12,7 @@ import ShareDialog from '../share/ShareDialog';
 import DurationWarningModal from './DurationWarningModal';
 import NoteEditor from '../notes/NoteEditor';
 import RecordingInstructions from './RecordingInstructions';
-import { Share2, VolumeX, Volume2, Plus } from 'lucide-react';
+import { Share2, VolumeX, Volume2, Plus, Pencil, Copy } from 'lucide-react';
 import { useMeetingStore } from '../../store/meetingStore';
 import { translateText, SUPPORTED_LANGUAGES } from '../../utils/translate';
 import toast from 'react-hot-toast';
@@ -91,6 +91,7 @@ export default function AudioRecorder({
   const [audioInputDevices, setAudioInputDevices] = useState<MediaDeviceInfo[]>([]);
   const [audioOutputDevices, setAudioOutputDevices] = useState<MediaDeviceInfo[]>([]);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const { setShowForm, setFormData } = useActionItemStore();
   const { setActiveTab: setActiveTabNavigation } = useNavigationStore();
@@ -545,13 +546,36 @@ export default function AudioRecorder({
                         </option>
                       ))}
                     </select>
-                    <button
-                      onClick={handleGenerateSummary}
-                      className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-                      disabled={isGeneratingSummary}
-                    >
-                      {isGeneratingSummary ? 'Generating...' : 'Regenerate'}
-                    </button>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={handleGenerateSummary}
+                        className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                        disabled={isGeneratingSummary}
+                      >
+                        {isGeneratingSummary ? 'Generating...' : 'Regenerate'}
+                      </button>
+                      {
+                        !isEditing && (
+                          <button
+                            onClick={() => setIsEditing(true)}
+                            className="p-2 text-gray-400 hover:text-gray-600 bg-white rounded-md border border-gray-300"
+                      >
+                            <Pencil className="w-4 h-4 stroke-indigo-600" />
+                          </button>
+                        )
+                      }
+
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(translatedSummary || summary);
+                          toast.success('Summary copied to clipboard');
+                        }}
+                        className="p-2 text-gray-400 hover:text-gray-600 bg-white rounded-md border border-gray-300"
+                        title="Copy to clipboard"
+                      >
+                        <Copy className="w-4 h-4 stroke-indigo-600" />
+                      </button>
+                    </div>
                   </div>
                   <div className="flex-1 overflow-hidden">
                     {isTranslating ? (
@@ -593,6 +617,8 @@ export default function AudioRecorder({
                               }}
                               disabled={isTranslating}
                               className="h-full"
+                              isEditing={isEditing}
+                              setIsEditing={setIsEditing}
                             />
                           </div>
                         ) : (
@@ -643,6 +669,8 @@ export default function AudioRecorder({
                             }}
                             disabled={isTranslating}
                             className="h-full"
+                            isEditing={isEditing}
+                            setIsEditing={setIsEditing}
                           />
                         </div>
 
