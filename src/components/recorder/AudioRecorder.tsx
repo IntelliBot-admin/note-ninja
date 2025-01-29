@@ -23,6 +23,7 @@ import { getStorage, ref, getBlob } from 'firebase/storage';
 import { useActionItemStore } from '../../store/actionItemStore';
 import { useNavigationStore } from '../../store/navigationStore';
 import DeviceSelectDialog from './DeviceSelection';
+import { SummaryEditor } from '../summary/SummaryEditor';
 // import { Transcript } from './HyperAudio';
 // import EnhancedHyperAudioTranscript from './HyperAudio';
 
@@ -169,7 +170,7 @@ export default function AudioRecorder({
       // Request permission and enumerate devices
       await navigator.mediaDevices.getUserMedia({ audio: true });
       const devices = await navigator.mediaDevices.enumerateDevices();
-      
+
       setAudioInputDevices(devices.filter(device => device.kind === 'audioinput'));
       setAudioOutputDevices(devices.filter(device => device.kind === 'audiooutput'));
     } catch (error) {
@@ -565,8 +566,8 @@ export default function AudioRecorder({
                           <button
                             onClick={() => setMobileView('summary')}
                             className={`px-4 py-2 text-sm font-medium rounded-md ${mobileView === 'summary'
-                                ? 'bg-indigo-100 text-indigo-700'
-                                : 'bg-gray-100 text-gray-600'
+                              ? 'bg-indigo-100 text-indigo-700'
+                              : 'bg-gray-100 text-gray-600'
                               }`}
                           >
                             Summary
@@ -574,8 +575,8 @@ export default function AudioRecorder({
                           <button
                             onClick={() => setMobileView('actions')}
                             className={`px-4 py-2 text-sm font-medium rounded-md ${mobileView === 'actions'
-                                ? 'bg-indigo-100 text-indigo-700'
-                                : 'bg-gray-100 text-gray-600'
+                              ? 'bg-indigo-100 text-indigo-700'
+                              : 'bg-gray-100 text-gray-600'
                               }`}
                           >
                             Action Items
@@ -584,9 +585,15 @@ export default function AudioRecorder({
 
                         {mobileView === 'summary' ? (
                           <div className="flex-1 overflow-y-auto px-4">
-                            <div className="prose prose-sm max-w-none">
-                              <div dangerouslySetInnerHTML={{ __html: translatedSummary || summary }} />
-                            </div>
+                            <SummaryEditor
+                              content={translatedSummary || summary}
+                              onSave={async (newContent) => {
+                                await updateMeeting(meetingId, { summary: newContent });
+                                setSummary(newContent);
+                              }}
+                              disabled={isTranslating}
+                              className="h-full"
+                            />
                           </div>
                         ) : (
                           actionItems && actionItems.length > 0 && (
@@ -626,11 +633,17 @@ export default function AudioRecorder({
                         )}
                       </div>
                     ) : (
-                      <div className="hidden sm:flex gap-6 h-[calc(500px-4rem)]">
-                        <div className="flex-1 overflow-y-auto pr-6 pb-6">
-                          <div className="prose prose-sm max-w-none">
-                            <div dangerouslySetInnerHTML={{ __html: translatedSummary || summary }} />
-                          </div>
+                      <div className="hidden sm:flex gap-6 h-full">
+                        <div className="flex-1 overflow-y-auto pr-6">
+                          <SummaryEditor
+                            content={translatedSummary || summary}
+                            onSave={async (newContent) => {
+                              await updateMeeting(meetingId, { summary: newContent });
+                              setSummary(newContent);
+                            }}
+                            disabled={isTranslating}
+                            className="h-full"
+                          />
                         </div>
 
                         {actionItems && actionItems.length > 0 && (

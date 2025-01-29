@@ -73,5 +73,5 @@ export const meetingTypes: Record<MeetingType, string> = {
   'board-meeting': 'Board Meeting',
   'investor-earnings-call': 'Investor/Earnings Call',
   'vehicle-repair': 'Vehicle Repair',
-  'crm': 'CRM Summary'
+  'crm': 'CRM Summary',
 };

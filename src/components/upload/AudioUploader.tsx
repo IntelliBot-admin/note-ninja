@@ -16,6 +16,7 @@ import { Speaker } from '../../types/transcription';
 import { useSubscription } from '../../hooks/useSubscription';
 import { useActionItemStore } from '../../store/actionItemStore';
 import { useNavigationStore } from '../../store/navigationStore';
+import { SummaryEditor } from '../summary/SummaryEditor';
 
 interface AudioUploaderProps {
   meetingId: string;
@@ -324,9 +325,7 @@ export default function AudioUploader({
         )}
       </div>
 
-      {/* Rest of the component remains the same */}
       <div className="space-y-4">
-        {/* Tabs Navigation */}
         <div className="bg-white rounded-lg shadow-sm">
           <nav className="flex" aria-label="Tabs">
             {['Transcription', 'AI Summary', 'Personal Notes'].map((tab) => (
@@ -355,7 +354,6 @@ export default function AudioUploader({
           </nav>
         </div>
 
-        {/* Tab Content */}
         <div className="bg-white rounded-lg shadow-sm border p-4">
           {activeTab === 'transcription' && (
             <TranscriptDisplay
@@ -431,11 +429,16 @@ export default function AudioUploader({
                       {showMindMap ? (
                         <MindMap summary={summary} meetingType={selectedMeetingType} />
                       ) : (
-                        <div className="flex gap-6 h-[calc(500px-4rem)]">
-                          <div className="flex-1 overflow-y-auto pr-6 pb-6">
-                            <div className="prose prose-sm max-w-none">
-                              <div dangerouslySetInnerHTML={{ __html: summary }} />
-                            </div>
+                        <div className="flex gap-6 h-full">
+                          <div className="flex-1 overflow-y-auto pr-6">
+                            <SummaryEditor
+                              content={summary}
+                              onSave={async (newContent) => {
+                                setSummary(newContent);
+                                onSummaryChange(newContent, selectedMeetingType, actionItems || []);
+                              }}
+                              className="h-full"
+                            />
                           </div>
                           
                           {!showMindMap && actionItems && actionItems.length > 0 && (
