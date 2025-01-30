@@ -19,7 +19,8 @@ export type MeetingType =
   | 'board-meeting'
   | 'investor-earnings-call'
   | 'vehicle-repair'
-  | 'crm';
+  | 'crm'
+  | 'call-report';
 
 export type ContentSource = 'record' | 'upload';
 
@@ -56,16 +57,16 @@ export interface Meeting {
 }
 
 export const meetingTypes: Record<MeetingType, string> = {
-  general: 'General Meeting',
-  sales: 'Sales Meeting',
-  product: 'Product Meeting',
-  client: 'Client Meeting',
-  kickoff: 'Project Kickoff',
-  standup: 'Daily Standup',
-  brainstorm: 'Brainstorming Session',
-  financial: 'Financial Review',
-  performance: 'Performance Review',
-  strategic: 'Strategic Planning',
+  'general': 'General Meeting',
+  'sales': 'Sales Meeting',
+  'product': 'Product Meeting',
+  'client': 'Client Meeting',
+  'kickoff': 'Project Kickoff',
+  'standup': 'Daily Standup',
+  'brainstorm': 'Brainstorming Session',
+  'financial': 'Financial Review',
+  'performance': 'Performance Review',
+  'strategic': 'Strategic Planning',
   '360-summary': '360° Content Summary',
   'quiz-generator': 'Interactive Quiz Generator',
   'doctors-visit': 'Doctor\'s Visit',
@@ -74,4 +75,5 @@ export const meetingTypes: Record<MeetingType, string> = {
   'investor-earnings-call': 'Investor/Earnings Call',
   'vehicle-repair': 'Vehicle Repair',
   'crm': 'CRM Summary',
+  'call-report': 'Call Report',
 };

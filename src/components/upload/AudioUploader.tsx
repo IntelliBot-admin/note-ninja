@@ -448,7 +448,6 @@ export default function AudioUploader({
                       >
                         <Copy className="w-4 h-4 stroke-indigo-600" />
                       </button>
-     
                       </div>
                     </div>
                     <div className="flex-1 overflow-y-auto">

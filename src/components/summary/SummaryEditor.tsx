@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { Save, Pencil } from 'lucide-react';
+import { Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface SummaryEditorProps {
