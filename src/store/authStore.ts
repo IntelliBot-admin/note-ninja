@@ -99,7 +99,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       // await createCheckoutSession(user.uid, import.meta.env.VITE_STRIPE_ENTRY_PRICE_ID);
     } catch (error: any) {
-      console.error('Signup error:', error);
+      console.log('Signup error:', error);
       throw new Error(getAuthErrorMessage(error.code));
     }
   },
@@ -166,6 +166,8 @@ function getAuthErrorMessage(code: string): string {
       return 'Incorrect password';
     case 'auth/too-many-requests':
       return 'Too many attempts. Please try again later';
+    case 'auth/internal-error':
+      return 'You are not authorized to sign up with this email. Please contact support.';
     default:
       return 'An error occurred. Please try again';
   }
