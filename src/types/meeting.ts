@@ -20,7 +20,8 @@ export type MeetingType =
   | 'investor-earnings-call'
   | 'vehicle-repair'
   | 'crm'
-  | 'call-report';
+  | 'call-report'
+  | 'adam-equipment';
 
 export type ContentSource = 'record' | 'upload';
 
@@ -76,4 +77,5 @@ export const meetingTypes: Record<MeetingType, string> = {
   'vehicle-repair': 'Vehicle Repair',
   'crm': 'CRM Summary',
   'call-report': 'Call Report',
+  'adam-equipment': 'Adam Equipment',
 };
