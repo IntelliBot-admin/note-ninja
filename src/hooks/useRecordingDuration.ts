@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 
-const WARNING_DURATION = 75 * 60 * 1000; // 75 minutes in milliseconds
+const WARNING_DURATION = 180 * 60 * 1000; // 75 minutes in milliseconds
 const WARNING_TIMEOUT = 60 * 1000; // 60 seconds warning duration
 
 export function useRecordingDuration(
